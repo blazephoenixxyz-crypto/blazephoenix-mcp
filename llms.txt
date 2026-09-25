@@ -1,0 +1,45 @@
+# @blazephoenix/mcp
+
+> MCP server for AI agents: on-chain DEX aggregator tools for BlazePhoenix (Base, Ethereum,
+> Optimism, Arbitrum, Robinhood Chain) that run on the user's machine and read the chain
+> through the USER'S OWN RPC. The RPC is mandatory — there is no free fallback to
+> BlazePhoenix nodes. Zero custody: tools return unsigned transactions.
+
+## Install
+
+- Claude Code: `claude mcp add blazephoenix -e BLAZEPHOENIX_RPC_BASE=<the user's https node> -- npx -y @blazephoenix/mcp`
+- Any MCP client: command `npx`, args `["-y", "@blazephoenix/mcp"]`, env `BLAZEPHOENIX_RPC_<CHAIN>`
+- Env per chain: `BLAZEPHOENIX_RPC_BASE` · `_ETHEREUM` · `_OPTIMISM` · `_ARBITRUM` · `_ROBINHOOD`
+  (comma-separated = fallback order), or `BLAZEPHOENIX_RPC_URL` for a single node.
+- Protocol version: `BLAZEPHOENIX_VERSION` = `latest` (default) · `1` · `2` · `2.0.0`
+
+## Tools
+
+- `get_quote` — the Quoter's preview on the user's node: net output after the 0.28% fee,
+  the on-chain minimum, price impact, Phoenix Check verdict (ok · caution · danger · blocked;
+  fails closed). Respect `blocked`.
+- `build_swap` — verified unsigned swap transaction(s) `[approve?, swap]`. On 2.x the calldata
+  is the Quoter's own `previewAndEncode` output, verified field by field (amount, recipient,
+  deadline, route, minOut ≥ on-chain floor); slippage only tightens the minimum.
+- `simulate_swap` — `eth_call` the swap from the sender: realised output or the decoded revert.
+- `get_token_info` · `get_deployments` · `verify_deployment` · `check_solvency` · `get_fills`
+
+## Rules for agents
+
+- If a tool answers `rpc_required`, ASK the user for a node URL for that chain (any
+  provider's free tier) — never invent one.
+- Tokens: 0x addresses, or ETH / WETH / USDC / BZPX. Never guess an address from a ticker.
+- Amounts: `amount` is human units (decimals read on-chain); `amountIn` is base units.
+- The user signs. Never ask for a private key.
+
+## Hosted endpoint
+
+`https://blazephoenix.xyz/mcp` (streamable-HTTP, no auth): `get_quote` with `rpc` REQUIRED,
+`get_deployments`, `get_abi`. Same rule: no node, no quote.
+
+## Links
+
+- Source: https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp
+- SDK underneath: https://github.com/blazephoenixxyz-crypto/SDK
+- Deployments (Core, Hub, Solver, Quoter, Router per chain and version): https://blazephoenix.xyz/api/deployments
+- Protocol corpus: https://blazephoenix.xyz/llms.txt

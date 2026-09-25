@@ -3,7 +3,7 @@
 [![solvency](https://img.shields.io/endpoint?url=https%3A%2F%2Fblazephoenix.xyz%2Fapi%2Fbadge)](https://blazephoenix.xyz/solvency)
 
 On-chain DEX aggregator tools for AI agents — **running on your machine, reading the chain
-through YOUR RPC.** Every quote is computed by the BlazePhoenix Quoter contract (the same
+through YOUR RPC (mandatory — there is no free fallback).** Every quote is computed by the BlazePhoenix Quoter contract (the same
 logic that settles the swap) via an `eth_call` on your own node. No BlazePhoenix server sits
 in the read path, nobody else pays for (or can see) your reads, and nothing here holds a key.
 
@@ -90,10 +90,12 @@ a minimum at least the on-chain floor all match the request. Slippage only ever 
 
 ## The hosted endpoint
 
-`https://blazephoenix.xyz/mcp` remains for discovery and offline work, and it performs **no
-RPC**: it serves the deployment registry, ABIs, and a codec (`prepare_quote` returns the exact
-`eth_call` to run on your node; `decode_quote` turns the node's answer into the quote, checks
-and transaction). For one-step quoting, run this server locally.
+`https://blazephoenix.xyz/mcp` (streamable-HTTP, no auth) runs on **your RPC too**: its
+`get_quote` takes `rpc` as a **required** argument — your https node for that chain — and
+reads the Quoter on it (never cached, never shared). There is no free fallback: without
+`rpc` it answers `rpc_required`. It also serves `get_deployments` and `get_abi`. For the full
+toolset (`build_swap`, `simulate_swap`, `check_solvency`, …) and zero hops, run this server
+locally.
 
 ## Verify instead of trusting
 

@@ -1,7 +1,7 @@
 {
   "name": "@blazephoenix/mcp",
   "version": "1.0.0",
-  "description": "BlazePhoenix MCP server for AI agents \u2014 on-chain DEX aggregator tools (quote, build, verify, simulate swaps) that run on YOUR machine against YOUR RPC. Zero custody: it returns unsigned transactions, never holds a key.",
+  "description": "BlazePhoenix MCP server for AI agents — on-chain DEX aggregator tools (quote, build, verify, simulate swaps) that run on YOUR machine against YOUR RPC (mandatory, no free fallback). Zero custody: it returns unsigned transactions, never holds a key.",
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -37,7 +37,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "llms.txt"
   ],
   "engines": {
     "node": ">=18"
