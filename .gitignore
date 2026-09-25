@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+# The lockfile is not committed: @blazephoenix/sdk ^1.0.0 is resolved at
+# install time (npm or GitHub) and the published package pins nothing.
+package-lock.json
