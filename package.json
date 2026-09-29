@@ -1,0 +1,49 @@
+{
+  "name": "@blazephoenix/mcp",
+  "version": "1.0.0",
+  "description": "Local MCP server for BlazePhoenix: quotes, unsigned calldata, simulation and solvency, all read through your own RPC. It never signs and never holds keys.",
+  "type": "module",
+  "bin": {
+    "blazephoenix-mcp": "dist/server.js"
+  },
+  "main": "dist/server.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
+  },
+  "dependencies": {
+    "@blazephoenix/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "viem": "^2.21.40",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.2"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "blazephoenix",
+    "defi",
+    "dex",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp.git"
+  },
+  "homepage": "https://blazephoenix.xyz/agents",
+  "bugs": "https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp/issues"
+}
