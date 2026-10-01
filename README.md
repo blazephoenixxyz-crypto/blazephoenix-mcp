@@ -82,6 +82,24 @@ claude mcp add --transport http blazephoenix https://blazephoenix.xyz/mcp
 The source of the endpoint is in
 [Blaze-Phoenix-API](https://github.com/blazephoenixxyz-crypto/Blaze-Phoenix-API).
 
+## Install as a plugin or extension
+
+**Claude Code plugin** (hosted MCP endpoint plus the BlazePhoenix agent skill):
+
+```bash
+claude plugin marketplace add blazephoenixxyz-crypto/blazephoenix-mcp
+claude plugin install blazephoenix@blazephoenix
+```
+
+**Gemini CLI extension** (hosted MCP endpoint plus a context file):
+
+```bash
+gemini extensions install https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp
+```
+
+Both connect `https://blazephoenix.xyz/mcp`, which needs no key and performs no
+RPC. For the full toolset on your own node, use the [local server](#local-server).
+
 ## Verify instead of trusting
 
 Nothing here requires trusting BlazePhoenix:
