@@ -41,7 +41,7 @@ The RPC comes from the environment only, never from a tool argument:
 | Variable | Meaning |
 |---|---|
 | `BLAZEPHOENIX_RPC_URL` | One node, used for every chain it serves |
-| `BLAZEPHOENIX_RPC_BASE`, `_ETH`, `_OPTIMISM`, `_ARBITRUM`, `_ROBINHOOD` | A node per chain. Use either this or `BLAZEPHOENIX_RPC_URL`, not both |
+| `BLAZEPHOENIX_RPC_BASE`, `_ETHEREUM`, `_OPTIMISM`, `_ARBITRUM`, `_ROBINHOOD` | A node per chain. Use either this or `BLAZEPHOENIX_RPC_URL`, not both |
 
 A value may hold several URLs separated by commas; they are your fallback order.
 The server never prints your URLs, since they may carry a key.

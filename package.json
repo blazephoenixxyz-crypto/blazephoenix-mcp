@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@blazephoenix/sdk": "^1.0.0",
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "viem": "^2.21.40",
     "zod": "^3.25.0"
   },

@@ -59,6 +59,19 @@ try {
 } catch { slipRejected = true; }
 check('slippageBps above 5000 is rejected', slipRejected);
 
+// An unknown key must be refused, not dropped: `minOut` instead of `userMinOut` would
+// otherwise reach the Router as "no explicit minimum".
+check('every tool schema refuses unknown keys',
+  tools.every((t) => t.inputSchema.additionalProperties === false),
+  JSON.stringify(tools.filter((t) => t.inputSchema.additionalProperties !== false).map((t) => t.name)));
+let unknownText = '';
+try {
+  const r = await client.callTool({ name: 'build_swap', arguments: { tokenIn: 'ETH', tokenOut: 'USDC', amount: '1', chain: 'base', recipient: '0x' + '11'.repeat(20), minOut: '1000' } });
+  unknownText = r.isError === true ? r.content[0].text : '';
+} catch (e) { unknownText = String(e?.message ?? e); }
+check('an unknown key (minOut) is rejected by name, before any work',
+  unknownText.includes('minOut') && !unknownText.includes('rpc_required'), unknownText.slice(0, 200));
+
 console.log('text that reaches the agent');
 const { scrubUrls, tokenText } = await import(join(here, '..', 'dist', 'text.js'));
 check('scrubUrls reduces a URL inside a sentence to its host',
@@ -85,5 +98,17 @@ check('a failing RPC comes back as an error result', r401.isError === true, text
 check('the error names the failure without the key', !text401.includes('SECRETKEY'), text401.slice(0, 300));
 await leaky.close();
 rpc.close();
+
+console.log('documented variables are the ones the SDK reads');
+const { rpcFromEnv } = await import('@blazephoenix/sdk');
+const { readFileSync } = await import('node:fs');
+const readme = readFileSync(join(here, '..', 'README.md'), 'utf8');
+const row = readme.split('\n').find((l) => l.startsWith('| `BLAZEPHOENIX_RPC_BASE`')) ?? '';
+const suffixes = [...row.split('|')[1].matchAll(/`(?:BLAZEPHOENIX_RPC)?(_[A-Z]+)`/g)].map((m) => m[1]);
+check('the README lists five per-chain variables', suffixes.length === 5, JSON.stringify(suffixes));
+for (const s of suffixes) {
+  const cfg = rpcFromEnv({ [`BLAZEPHOENIX_RPC${s}`]: 'http://127.0.0.1:1' });
+  check(`BLAZEPHOENIX_RPC${s} is read by the SDK`, cfg !== undefined && Object.keys(cfg).length === 1);
+}
 console.log(failed === 0 ? `✅ ${passed} passed, 0 failed` : `❌ ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
