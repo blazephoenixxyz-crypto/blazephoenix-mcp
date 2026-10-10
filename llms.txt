@@ -1,0 +1,42 @@
+# BlazePhoenix MCP server
+
+> MCP tools for AI agents that quote, build and check swaps on BlazePhoenix, the on-chain DEX aggregator. Every quote is computed by the on-chain Quoter contract (`previewPlan`, an `eth_call`) on the RPC node you configure. The server is read-only: it never signs, never sends a transaction and never holds a key.
+
+There are two ways to connect, and neither needs an API key or a signup:
+
+- **Local server** (`@blazephoenix/mcp`, stdio, MIT). You bring your own RPC node: set `BLAZEPHOENIX_RPC_URL` (one node) or one of `BLAZEPHOENIX_RPC_BASE`, `_ETHEREUM`, `_OPTIMISM`, `_ARBITRUM`, `_ROBINHOOD` (comma-separated for fallback). The RPC comes from the environment only, never from a tool argument, and URLs are reduced to their host in every error. A chain without a node answers `rpc_required`.
+- **Remote endpoint** (`https://blazephoenix.xyz/mcp`, streamable HTTP, stateless). Free and keyless, and it performs no RPC call: it hands you the `eth_call` to run on your node and decodes the answer.
+
+Install the local server:
+
+```bash
+claude mcp add blazephoenix -e BLAZEPHOENIX_RPC_BASE=<your Base node URL> -- npx -y @blazephoenix/mcp
+```
+
+Connect the remote endpoint:
+
+```bash
+claude mcp add --transport http blazephoenix https://blazephoenix.xyz/mcp
+```
+
+Local tools: `get_quote`, `build_swap` (unsigned Router calldata), `simulate_swap`, `check_solvency`, `get_token_info`, `get_deployments`, `verify_deployment`. Every tool schema is strict: an unknown key is rejected by name. Remote tools: `prepare_quote`, `decode_quote`, `get_deployments`, `get_abi`.
+
+Chains: Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663).
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/blazephoenixxyz-crypto/blazephoenix-mcp/main/README.md): install, RPC variables, every tool, plugin and extension setup
+- [Agent skill](https://raw.githubusercontent.com/blazephoenixxyz-crypto/blazephoenix-mcp/main/plugins/blazephoenix/skills/blazephoenix-defi/SKILL.md): how an agent should quote, build and hand a swap to the user
+- [Gemini CLI context](https://raw.githubusercontent.com/blazephoenixxyz-crypto/blazephoenix-mcp/main/GEMINI.md): the same guidance for Gemini CLI
+- [Security policy](https://raw.githubusercontent.com/blazephoenixxyz-crypto/blazephoenix-mcp/main/SECURITY.md): scope and how to report a vulnerability
+
+## Related
+
+- [BlazePhoenix SDK llms.txt](https://raw.githubusercontent.com/blazephoenixxyz-crypto/SDK/main/llms.txt): the TypeScript SDK the local server is built on
+- [BlazePhoenix API llms.txt](https://raw.githubusercontent.com/blazephoenixxyz-crypto/Blaze-Phoenix-API/main/llms.txt): source of the remote endpoint and the HTTP API
+- [BlazePhoenix Dex llms.txt](https://raw.githubusercontent.com/blazephoenixxyz-crypto/Blaze-Phoenix-Dex/main/llms.txt): the contracts, their design and their verification ([repository](https://github.com/blazephoenixxyz-crypto/Blaze-Phoenix-Dex))
+
+## Optional
+
+- [npm package](https://www.npmjs.com/package/@blazephoenix/mcp): published versions
+- [Site llms.txt](https://blazephoenix.xyz/llms.txt): the integration guide for the whole project
