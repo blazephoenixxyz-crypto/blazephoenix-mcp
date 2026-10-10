@@ -18,6 +18,7 @@ export function scrubUrls(text: string): string {
  *  direction-override characters removed, whitespace collapsed, length capped. */
 export function tokenText(s: unknown, max = 64): string {
   const t = String(s ?? '')
+    .replace(/[\u{E0000}-\u{E007F}]/gu, '') // tag characters: invisible text a model still reads
     .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
