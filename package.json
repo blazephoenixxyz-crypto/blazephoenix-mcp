@@ -10,7 +10,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "llms.txt"
   ],
   "engines": {
     "node": ">=18"
@@ -37,7 +38,14 @@
     "blazephoenix",
     "defi",
     "dex",
-    "ai-agents"
+    "ai-agents",
+    "swap",
+    "dex-aggregator",
+    "byo-rpc",
+    "on-chain-quoter",
+    "base",
+    "ethereum",
+    "llms-txt"
   ],
   "license": "MIT",
   "repository": {

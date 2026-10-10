@@ -14,6 +14,7 @@ anyone.
   stateless). Deployment registry, ABIs and the pure quote codec. It performs no
   RPC call.
 - **Auth:** none · **API key:** none
+- **You bring:** an RPC node for each chain the local server reads ([variables](#local-server)). The remote endpoint needs nothing: you run the `eth_call` it prepares on your own node.
 - **Chains:** Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663)
 
 ## Local server
@@ -136,6 +137,7 @@ RPC, key or signer argument or signs anything.
 | Installable skill file | https://blazephoenix.xyz/skills/blazephoenix/SKILL.md |
 | Capability map | https://blazephoenix.xyz/capabilities.json |
 | Proof-carrying facts (claim/proof/url) | https://blazephoenix.xyz/facts.json |
+| This package for agents ([llmstxt.org](https://llmstxt.org) format) | [llms.txt](./llms.txt) |
 | LLM corpus index | https://blazephoenix.xyz/llms.txt |
 | Integration guide for humans | https://blazephoenix.xyz/agents |
 
