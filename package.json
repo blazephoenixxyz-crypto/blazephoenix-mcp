@@ -1,6 +1,7 @@
 {
   "name": "@blazephoenix/mcp",
   "version": "1.0.1",
+  "mcpName": "xyz.blazephoenix/mcp",
   "description": "Local MCP server for BlazePhoenix: quotes, unsigned calldata, simulation and solvency, all read through your own RPC. It never signs and never holds keys.",
   "type": "module",
   "bin": {
