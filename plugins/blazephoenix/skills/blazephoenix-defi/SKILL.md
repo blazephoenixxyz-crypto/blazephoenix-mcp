@@ -20,7 +20,7 @@ claude mcp add blazephoenix -e BLAZEPHOENIX_RPC_BASE=<the user's https node> -- 
 ```
 
 Tools: `get_quote`, `build_swap`, `simulate_swap`, `check_solvency`,
-`get_deployments`, `verify_deployment`, `get_fills`, `get_token_info`.
+`get_deployments`, `verify_deployment`, `get_token_info`.
 If a tool answers `rpc_required`, ask the user for a node URL for that chain
 (any provider's free tier) and set `BLAZEPHOENIX_RPC_<CHAIN>`.
 
