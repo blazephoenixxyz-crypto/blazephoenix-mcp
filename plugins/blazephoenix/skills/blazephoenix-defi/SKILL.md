@@ -45,10 +45,13 @@ POST https://blazephoenix.xyz/api/quote/decode  { "request": <request>, "result"
 
 ## Execute (the user signs; you never custody)
 
-Add `&recipient=0x…` to prepare (optionally `slippageBps`, default 50): decode
-gains `tx` `{to, data, value}` for `eth_sendTransaction` and an `approval` step
-for ERC-20 input. On 2.x deployments the calldata is the Quoter's own
-(`previewAndEncode`), verified field by field before it is returned. The Router
+Add `&recipient=0x…` and `&userMinOut=` (the least you accept, set from a
+price you trust; optionally `slippageBps`, default 50) to prepare: decode gains
+`tx` `{to, data, value}` for `eth_sendTransaction` and an `approval` step for
+ERC-20 input. Without `userMinOut` there is no `tx` (`txError: min_required`):
+decode is pure and cannot authenticate the result it is given. On 2.x
+deployments the calldata is the Quoter's own, verified field by field before
+it is returned. The Router
 enforces its floor ON-CHAIN: a worse fill reverts.
 
 ## Solvency (alertable)
