@@ -1,6 +1,6 @@
 {
   "name": "@blazephoenix/mcp",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "mcpName": "xyz.blazephoenix/mcp",
   "description": "Local MCP server for BlazePhoenix: quotes, unsigned calldata, simulation and solvency, all read through your own RPC. It never signs and never holds keys.",
   "type": "module",
@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@blazephoenix/sdk": "^1.0.0",
+    "@blazephoenix/sdk": "^1.2.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "viem": "^2.21.40",
     "zod": "^3.25.0"

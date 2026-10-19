@@ -56,8 +56,8 @@ enforces its floor ON-CHAIN: a worse fill reverts.
 
 ## Solvency (alertable)
 
-Local MCP: `check_solvency`. Or on the user's node:
-`cast call 0x3f60C7aa0c36a78D200405feBE143d2Cf3fA0c77 "isSolvent()(bool)" --rpc-url $BASE_RPC_URL`
+Local MCP: `check_solvency`, read on the user's node (`not_deployed` where no
+staking engine is registered).
 (`GET https://blazephoenix.xyz/api/badge` is the site's own cached badge.)
 
 ## Verify a published fact instead of trusting it

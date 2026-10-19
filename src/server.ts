@@ -39,7 +39,7 @@ const quoteShape = {
   tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC, BZPX'),
   amount: z.string().optional().describe('input amount in human units, for example "1.5"'),
   amountIn: z.string().optional().describe('input amount in base units, as an integer string'),
-  userMinOut: z.string().optional().describe('optional explicit minimum output, in base units of tokenOut'),
+  userMinOut: z.string().optional().describe('optional explicit minimum output, in base units of tokenOut; build_swap carries it as given and refuses one below the quote net of slippageBps (min_implausible)'),
   version: z.string().optional().describe('protocol version: latest (default) | 1 | 2 | 2.0.0'),
 };
 
@@ -49,6 +49,7 @@ const swapShape = {
   from: address.optional().describe('the account that will send the swap; enables the allowance check'),
   slippageBps: z.number().int().min(0).max(5000).optional().describe('0-5000, default 50; never below the on-chain floor'),
   deadlineSec: z.number().int().min(10).max(3600).optional().describe('deadline horizon in seconds, 10-3600, default 120'),
+  exact: z.boolean().optional().describe('true: take the minimum from previewPlanExact (every concentrated leg dry-run, same block), a 50 bps safety margin then slippageBps off it, never below the default minimum; a userMinOut above exactOut less the margin is refused (min_above_exact); one more eth_call'),
 };
 
 /** JSON.stringify that survives bigint. A token's `symbol` and `name` are text its own contract
@@ -176,7 +177,7 @@ async function main() {
     'check_solvency',
     {
       title: 'Check staking solvency',
-      description: 'Live staking solvency read from the chain: isSolvent() and the decoded solvency() struct. Defaults to Base.',
+      description: 'Live staking solvency read from the chain: isSolvent() and the decoded solvency() struct. Defaults to Base; answers not_deployed where no staking engine is registered.',
       inputSchema: strict({ chain }),
       annotations: { ...readOnly, title: 'Check staking solvency' },
     },

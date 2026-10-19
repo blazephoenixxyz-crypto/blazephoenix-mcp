@@ -131,9 +131,6 @@ RPC. For the full toolset on your own node, use the [local server](#local-server
 Nothing here requires trusting BlazePhoenix:
 
 ```bash
-# the solvency claim, straight from the chain, bypassing the site entirely
-cast call 0x3f60C7aa0c36a78D200405feBE143d2Cf3fA0c77 "isSolvent()(bool)" --rpc-url https://mainnet.base.org
-
 # re-execute any published fact live, with its block height
 curl -s "https://blazephoenix.xyz/api/verify?fact=solvency-live"
 
