@@ -194,5 +194,12 @@ for (const s of suffixes) {
   const cfg = rpcFromEnv({ [`BLAZEPHOENIX_RPC${s}`]: 'http://127.0.0.1:1' });
   check(`BLAZEPHOENIX_RPC${s} is read by the SDK`, cfg !== undefined && Object.keys(cfg).length === 1);
 }
+console.log('every manifest announces the package version');
+const pkgVersion = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')).version;
+check('the server announces the package version', client.getServerVersion()?.version === pkgVersion, String(client.getServerVersion()?.version));
+for (const f of ['gemini-extension.json', 'plugins/blazephoenix/.claude-plugin/plugin.json']) {
+  const v = JSON.parse(readFileSync(join(here, '..', f), 'utf8')).version;
+  check(`${f} matches the package version`, v === pkgVersion, String(v));
+}
 console.log(failed === 0 ? `✅ ${passed} passed, 0 failed` : `❌ ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

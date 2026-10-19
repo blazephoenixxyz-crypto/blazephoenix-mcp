@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 — version drift fixed
+
+- The server, `gemini-extension.json` and the Claude plugin manifest now announce the package
+  version (1.1.0 announced 1.0.1). The test suite checks that all of them match `package.json`.
+- No change to tools or behaviour.
+
 ## 1.1.0 — the minimum rules of `@blazephoenix/sdk` 1.2.0
 
 - Requires `@blazephoenix/sdk` `^1.2.0`.
