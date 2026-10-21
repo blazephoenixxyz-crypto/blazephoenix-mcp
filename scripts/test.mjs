@@ -180,6 +180,11 @@ const aboveExact = await bs({ exact: true, userMinOut: '3880500001' });
 check('exact: userMinOut above the ceiling comes back as min_above_exact', aboveExact.isError === true && aboveExact.content[0].text.includes('min_above_exact'), aboveExact.content[0].text.slice(0, 200));
 const solv = await live.callTool({ name: 'check_solvency', arguments: { chain: 'base' } });
 check('check_solvency on Base answers not_deployed (no staking engine pinned)', solv.isError === true && solv.content[0].text.includes('not_deployed'), solv.content[0].text.slice(0, 200));
+const pinned = new Client({ name: 'bp-mcp-test-pin', version: '0.0.0' });
+await pinned.connect(new StdioClientTransport({ command: process.execPath, args: [server], env: { ...nodeEnv, BLAZEPHOENIX_VERSION: '2' } }));
+const pinnedSwap = await pinned.callTool({ name: 'build_swap', arguments: swapArgs({}) });
+check('the pin reaches the SDK: pinned to 2 (pending), the swap that latest builds is refused', given.isError !== true && pinnedSwap.isError === true, pinnedSwap.content[0].text.slice(0, 200));
+await pinned.close();
 await live.close();
 node.close();
 

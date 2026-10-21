@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.2 — protocol version pin
+
+- New optional variable `BLAZEPHOENIX_VERSION`, passed to the SDK as the protocol version pin
+  (`latest`, `1`, `2` or a full version such as `2.0.0`). Without it every call resolves
+  `latest`, as before. Documented in the README.
+- An invalid value stops the server at start with a clear error instead of being ignored.
+- Tests: an invalid pin is refused, and a pin to a version not yet deployed refuses the swap
+  that `latest` builds.
+
 ## 1.1.1 — version drift fixed
 
 - The server, `gemini-extension.json` and the Claude plugin manifest now announce the package
