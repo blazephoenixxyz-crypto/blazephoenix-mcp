@@ -201,5 +201,12 @@ for (const f of ['gemini-extension.json', 'plugins/blazephoenix/.claude-plugin/p
   const v = JSON.parse(readFileSync(join(here, '..', f), 'utf8')).version;
   check(`${f} matches the package version`, v === pkgVersion, String(v));
 }
+console.log('BLAZEPHOENIX_VERSION pins the protocol version');
+const { spawnSync } = await import('node:child_process');
+const boot = (v) => spawnSync(process.execPath, [server], { env: { ...env, BLAZEPHOENIX_VERSION: v }, input: '', encoding: 'utf8', timeout: 10000 });
+const bad = boot('banana');
+check('an invalid pin stops the server with a clear error', bad.status === 1 && /BLAZEPHOENIX_VERSION must be/.test(bad.stderr), bad.stderr);
+const good = boot('1');
+check('a valid pin is accepted and reported', good.status === 0 && /version pin 1\b/.test(good.stderr), good.stderr);
 console.log(failed === 0 ? `✅ ${passed} passed, 0 failed` : `❌ ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

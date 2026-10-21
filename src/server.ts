@@ -110,7 +110,11 @@ async function main() {
   // The RPC is read from the environment, once. URLs are never echoed: they may carry a key.
   let client: BlazePhoenix;
   try {
-    client = new BlazePhoenix({ rpc: rpcFromEnv() });
+    const pin = process.env.BLAZEPHOENIX_VERSION?.trim() || undefined;
+    if (pin !== undefined && !/^v?(latest|\d+(\.\d+){0,2})$/i.test(pin)) {
+      throw new Error(`BLAZEPHOENIX_VERSION must be latest, 1, 2 or a full version such as 2.0.0 (got "${pin}")`);
+    }
+    client = new BlazePhoenix({ rpc: rpcFromEnv(), version: pin });
   } catch (e) {
     process.stderr.write(`blazephoenix-mcp: ${scrubUrls(String((e as Error).message))}\n`);
     process.exit(1);
@@ -219,7 +223,7 @@ async function main() {
   );
 
   await server.connect(new StdioServerTransport());
-  process.stderr.write(`blazephoenix-mcp ${VERSION} on stdio; ${describeRpc()}\n`);
+  process.stderr.write(`blazephoenix-mcp ${VERSION} on stdio; ${describeRpc()}; version pin ${process.env.BLAZEPHOENIX_VERSION?.trim() || 'latest'}\n`);
 }
 
 main().catch((e) => {
