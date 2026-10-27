@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.3 — what a tool returns is what it says
+
+- `get_quote` with `exact: true` returns the Phoenix Check `checks`, taken from the default
+  quote of the same request, next to `exactOut`.
+- `simulate_swap` answers `ok: false` with code `simulation_reverted` when the simulated swap
+  reverts; the revert text is cleaned (printable, one line) and capped, since a token chose it.
+- `amount` and `amountIn` in the same call are refused (`bad_request`) instead of one silently
+  winning.
+
 ## 1.1.2 — protocol version pin
 
 - New optional variable `BLAZEPHOENIX_VERSION`, passed to the SDK as the protocol version pin
