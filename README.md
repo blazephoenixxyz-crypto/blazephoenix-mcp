@@ -15,7 +15,7 @@ anyone.
   RPC call.
 - **Auth:** none · **API key:** none
 - **You bring:** an RPC node for each chain the local server reads ([variables](#local-server)). The remote endpoint needs nothing: you run the `eth_call` it prepares on your own node.
-- **Chains:** Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663)
+- **Chains:** Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663) (protocol V1 is live on all five; V2 is pending and not planned for Ethereum L1)
 
 ## BlazePhoenix in one sentence
 
@@ -77,7 +77,7 @@ The server never prints your URLs, since they may carry a key.
 
 | Tool | What it does |
 |---|---|
-| `get_quote` | Swap quote through your RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg. |
+| `get_quote` | Swap quote through your RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg and returns `exactOut` (net of the fee) and `quoterOut` (the Quoter's own scalar), with the Phoenix Check from the default quote of the same request. |
 | `build_swap` | Quote and return verified **unsigned** Router calldata, with the minimum output and deadline baked in. |
 | `simulate_swap` | Build the swap and dry-run it from a given account with an `eth_call`. |
 | `check_solvency` | Live staking solvency: `isSolvent()` and the decoded `solvency()` struct. |
