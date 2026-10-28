@@ -170,7 +170,7 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 
 ## License
 
-The code is MIT (see `LICENSE`). This documentation is CC BY 4.0. The protocol
+The code is MIT (see `LICENSE`). This documentation is © 2026 BlazePhoenix, all rights reserved. The protocol
 contracts are BUSL-1.1 (free to read, audit and verify; production use before the
 2030 change date requires a license). The mechanisms and terminology (Iron Law Φ,
 Monoslot, Master Conservation Identity) are original BlazePhoenix work: attribute
