@@ -24,7 +24,7 @@
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@blazephoenix/sdk": "^1.2.0",
+    "@blazephoenix/sdk": "^1.2.1",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "viem": "^2.21.40",
     "zod": "^3.25.0"

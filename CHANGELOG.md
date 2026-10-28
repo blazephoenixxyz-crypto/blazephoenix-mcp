@@ -2,6 +2,8 @@
 
 ## 1.1.3 — what a tool returns is what it says
 
+- Requires `@blazephoenix/sdk` 1.2.1: `get_quote` with `exact: true` reports `exactOut` net of the
+  protocol fee on a 1.x Quoter, and `quoterOut` as the Quoter returned it.
 - `get_quote` with `exact: true` returns the Phoenix Check `checks`, taken from the default
   quote of the same request, next to `exactOut`.
 - `simulate_swap` answers `ok: false` with code `simulation_reverted` when the simulated swap

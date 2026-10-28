@@ -189,7 +189,7 @@ check('exact: userMinOut above the ceiling comes back as min_above_exact', above
 // 3262 C-2: the exact envelope carries the Phoenix Check verdict
 const gq = await live.callTool({ name: 'get_quote', arguments: { tokenIn: WETH, tokenOut: USDC, amountIn: (10n ** 18n).toString(), chain: 'base', exact: true } });
 const gqBody = gq.isError === true ? {} : JSON.parse(gq.content[0].text).result ?? {};
-check('get_quote exact returns exactOut and the Phoenix Check verdict', gqBody.exactOut === '3900000000' && typeof gqBody.checks?.verdict === 'string', gq.content[0].text.slice(0, 200));
+check('get_quote exact returns exactOut net of the 1.x fee, quoterOut as quoted, and the Phoenix Check verdict', gqBody.exactOut === '3889080000' && gqBody.quoterOut === '3900000000' && typeof gqBody.checks?.verdict === 'string', gq.content[0].text.slice(0, 200));
 // 3348: amount and amountIn together are refused
 const both = await bs({ amount: '2' });
 check('amount together with amountIn is refused as bad_request', both.isError === true && both.content[0].text.includes('bad_request'), both.content[0].text.slice(0, 200));
