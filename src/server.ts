@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv } from '@blazephoenix/sdk';
 import { scrubUrls, tokenText } from './text.js';
 
-const VERSION = '1.1.2';
+const VERSION = '1.1.3';
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'expected a 0x address (40 hex characters)');
 const chain = z
@@ -58,6 +58,7 @@ const stringify = (v: unknown) =>
   JSON.stringify(v, (k, x) => {
     if (typeof x === 'bigint') return x.toString();
     if ((k === 'symbol' || k === 'name') && typeof x === 'string') return tokenText(x);
+    if (k === 'reason' && typeof x === 'string') return tokenText(x, 200);
     return x;
   }, 2);
 
@@ -104,6 +105,9 @@ function requireAmount(a: { amount?: string; amountIn?: string }) {
   if (!a.amount && !a.amountIn) {
     throw Object.assign(new Error('provide amount (human units) or amountIn (base units)'), { code: 'bad_request' });
   }
+  if (a.amount && a.amountIn) {
+    throw Object.assign(new Error('pass amount (human units) or amountIn (base units), not both: one of them would silently win'), { code: 'bad_request' });
+  }
 }
 
 async function main() {
@@ -138,7 +142,11 @@ async function main() {
       run(async () => {
         requireAmount(a);
         const { exact, ...req } = a;
-        return exact ? client.quoteExact(req) : client.quote(req);
+        if (!exact) return client.quote(req);
+        // The exact envelope carries no verdict of its own: the Phoenix Check comes from the default
+        // quote of the same request, read alongside, so the verdict the description promises is there.
+        const [quote, ex] = await Promise.all([client.quote(req), client.quoteExact(req)]);
+        return { ...ex, checks: quote.checks, checksFrom: 'default quote of the same request' };
       }),
   );
 
@@ -173,7 +181,16 @@ async function main() {
       run(async () => {
         requireAmount(a);
         const plan = await client.buildSwap(asSwap(a));
-        return { plan, simulation: await client.simulate(plan, a.from as Hex) };
+        const simulation = await client.simulate(plan, a.from as Hex);
+        // A reverted simulation is not a success: ok:false, with the reason cleaned like any text
+        // that comes from outside.
+        if (!simulation.ok) {
+          const err = simulation.error as { name?: string; reason?: string } | undefined;
+          throw Object.assign(
+            new Error(`the simulated swap reverted${err?.name ? ` (${tokenText(err.name, 40)})` : ''}: ${tokenText(err?.reason ?? 'execution reverted', 120)}`),
+            { code: 'simulation_reverted' });
+        }
+        return { plan, simulation };
       }),
   );
 
