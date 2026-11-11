@@ -20,12 +20,15 @@ const SUITE = ['node', 'scripts/test-properties.mjs'];
 const BUILD = ['npx', 'tsc'];
 const T = 'src/text.ts';
 const S = 'src/server.ts';
-/** The source spells its ranges as escapes; `u('200b')` is that spelling, backslash included. */
-const u = (h) => `\\u${h}`;
 const CC = 'tokenText: every control character (Unicode Cc)';
 const DIR = 'tokenText: every direction mark, embedding, override and isolate';
 const ZW = 'tokenText: the zero-width space, joiners';
 const TAG = 'tokenText: every tag character';
+const BIDI = 'tokenText: every bidirectional control';
+const DIN = 'tokenText: every default-ignorable code point';
+const CFN = 'tokenText: every format character (Unicode Cf)';
+const HAND = 'tokenText: the invisible characters of the hand table';
+const SIM = 'simulate_swap: a revert text reaches the agent as one line';
 const WS = 'tokenText: any run of whitespace becomes one space';
 const CAP = 'tokenText: the cap is exact';
 const URLS = 'scrubUrls: path, query, fragment and userinfo are gone';
@@ -33,17 +36,18 @@ const FAULTS = ['get_quote', 'build_swap', 'simulate_swap', 'get_token_info', 'c
 
 /** [file, old, new, paired check name prefix(es), opt?] — the id is the position, 1-based. */
 const M = [
-  // text.ts — tokenText: one mutant per boundary of every range it removes
-  [T, `${u('0000')}-${u('001f')}`, `${u('0001')}-${u('001f')}`, CC],
-  [T, `${u('0000')}-${u('001f')}`, `${u('0000')}-${u('001e')}`, CC],
-  [T, `${u('007f')}-${u('009f')}`, `${u('0080')}-${u('009f')}`, CC],
-  [T, `${u('007f')}-${u('009f')}`, `${u('007f')}-${u('009e')}`, CC],
-  [T, `${u('200b')}-${u('200f')}`, `${u('200b')}-${u('200d')}`, DIR],
-  [T, `${u('200b')}-${u('200f')}`, `${u('200e')}-${u('200f')}`, ZW],
-  [T, `${u('2028')}-${u('202e')}`, `${u('2028')}-${u('202d')}`, DIR],
-  [T, `${u('2028')}-${u('202e')}`, `${u('202b')}-${u('202e')}`, DIR],
-  [T, `${u('2066')}-${u('2069')}`, `${u('2067')}-${u('2069')}`, DIR],
-  [T, `${u('2066')}-${u('2069')}`, `${u('2066')}-${u('2068')}`, DIR],
+  // text.ts — tokenText: one mutant per property of the class it removes, and the class as it
+  // was before uid 4001 (explicit ranges, no U+061C)
+  [T, '\\p{Cc}', '', CC],
+  [T, '\\p{Cf}', '', CFN],
+  [T, '\\p{Default_Ignorable_Code_Point}', '', [DIN, HAND]],
+  [T, '\\p{Cf}\\p{Default_Ignorable_Code_Point}', '', [DIR, ZW, BIDI]],
+  [T, `[\\p{Cc}\\p{Cf}\\p{Default_Ignorable_Code_Point}]/gu, ' ')`, `[\\u0000-\\u001f\\u007f-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2066-\\u2069\\ufeff]/g, ' ')`, [BIDI, DIN, CFN, HAND, 'get_token_info: a symbol and a name chosen by the token']],
+  [T, `Code_Point}]/gu, ' ')`, `Code_Point}]/u, ' ')`, CC],
+  [T, '\\p{Default_Ignorable_Code_Point}', '\\p{Bidi_Control}', [DIN, HAND]],
+  [T, '\\p{Cf}\\p{Default_Ignorable_Code_Point}', '\\p{Bidi_Control}', [ZW, DIN]],
+  [T, `Code_Point}]/gu, ' ')`, `Code_Point}]/gu, '')`, 'get_token_info: a symbol and a name chosen by the token'],
+  [T, '\\p{Cc}\\p{Cf}', '', [CC, CFN]],
   [T, `    .replace(/[\\u{E0000}-\\u{E007F}]/gu, '') //`, '    //', TAG],
   [T, `[\\u{E0000}-\\u{E007F}]/gu, '')`, `[\\u{E0000}-\\u{E007F}]/gu, ' ')`, TAG],
   [T, `\\u{E0000}-\\u{E007F}`, `\\u{E0001}-\\u{E007F}`, TAG],
@@ -51,7 +55,7 @@ const M = [
   [T, `    .replace(/\\s+/g, ' ')\n`, '', WS],
   [T, `.replace(/\\s+/g, ' ')`, `.replace(/\\s/g, ' ')`, WS],
   [T, '    .trim();', '    ;', WS],
-  [T, `${u('007f')}-${u('009f')}`, `${u('007f')}-${u('00ff')}`, 'tokenText: visible text within the cap is returned as written'],
+  [T, '[\\p{Cc}', '[\\p{Lu}\\p{Cc}', 'tokenText: visible text within the cap is returned as written'],
   [T, 't.length > max ?', 't.length >= max ?', CAP],
   [T, 't.slice(0, max)', 't.slice(0, max + 1)', CAP],
   [T, 'max = 64', 'max = 65', 'tokenText: the default cap is 64 units'],
@@ -77,7 +81,12 @@ const M = [
   [S, 'stringify({ ok: false, code,', 'stringify({ ok: true, code,', FAULTS],
   // The server scrubs every error once more on its way out. The SDK it is built on already
   // answers without the URL, so whether any check can see this second wall is measured here.
-  [S, 'error: scrubUrls(error)', 'error: error', FAULTS, { measure: 'second wall behind the SDK: SURVIVED means no fault in this suite gets a URL past the SDK' }],
+  [S, 'error: tokenText(scrubUrls(error), 400)', 'error: tokenText(error, 400)', FAULTS, { measure: 'second wall behind the SDK: SURVIVED means no fault in this suite gets a URL past the SDK' }],
+  // fin-1111, uid 4005 (MCP half): the error envelope is cleaned and capped here, whatever the SDK
+  // under it lets through. Measured against @blazephoenix/sdk 1.2.1; once the SDK answers a
+  // revert as a revert these two can only be seen by a check that reaches fail() another way.
+  [S, 'error: tokenText(scrubUrls(error), 400)', 'error: scrubUrls(error)', SIM],
+  [S, 'tokenText(scrubUrls(error), 400)', 'tokenText(scrubUrls(error), 4000)', SIM],
 ];
 
 const only = process.argv.slice(2).map(Number);

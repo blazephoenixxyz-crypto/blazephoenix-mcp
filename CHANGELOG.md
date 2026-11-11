@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Token text: every character a reader cannot see is removed by Unicode property (control,
+  format, default-ignorable), not from a list. U+061C (Arabic letter mark), the soft hyphen,
+  word joiners and variation selectors no longer pass through.
+- Every error a tool returns is cleaned the same way (printable, one line) and capped at 400
+  characters: a revert reason chosen by a token reaches the agent as text, never as layout.
+
 ## 1.1.3 — what a tool returns is what it says
 
 - Requires `@blazephoenix/sdk` 1.2.1: `get_quote` with `exact: true` reports `exactOut` net of the

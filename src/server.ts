@@ -63,10 +63,12 @@ const stringify = (v: unknown) =>
   }, 2);
 
 const ok = (result: unknown) => ({ content: [{ type: 'text' as const, text: stringify({ ok: true, result }) }] });
-/** An error's text may quote the RPC URL it called; every URL in it is reduced to its host. */
+/** An error's text may quote the RPC URL it called, and the words of a token that reverted:
+ *  every URL in it is reduced to its host, and the text is cleaned and capped like any other
+ *  text that comes from outside. */
 const fail = (code: string, error: string) => ({
   isError: true,
-  content: [{ type: 'text' as const, text: stringify({ ok: false, code, error: scrubUrls(error) }) }],
+  content: [{ type: 'text' as const, text: stringify({ ok: false, code, error: tokenText(scrubUrls(error), 400) }) }],
 });
 
 async function run(fn: () => Promise<unknown>) {
