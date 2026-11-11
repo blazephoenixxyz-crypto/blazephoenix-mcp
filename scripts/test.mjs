@@ -34,6 +34,13 @@ check('every tool is marked read-only', tools.every((t) => t.annotations?.readOn
 check('no tool takes an rpc, url, key or private key argument',
   tools.every((t) => !Object.keys(t.inputSchema.properties ?? {}).some((k) => /rpc|url|key|secret|mnemonic|signer|wallet/i.test(k))));
 check('no signing or sending tool is exposed', !names.some((n) => /sign|send|execute|broadcast/.test(n)));
+// build_swap's bytes pass on canExecute (swap math), not on the token transfer. The
+// description must point to the Router eth_call from the payer and must not invite signing as-is.
+const bsDesc = tools.find((t) => t.name === 'build_swap')?.description ?? '';
+check('build_swap points to simulate_swap from the paying address before signing',
+  /swap math, not the token transfer/.test(bsDesc) && /simulate_swap from the paying address/.test(bsDesc)
+  && /tax, cap a wallet or exempt/.test(bsDesc), bsDesc);
+check('build_swap does not say review-then-sign', !/review it, then sign/.test(bsDesc), bsDesc);
 
 console.log('errors come back as tool results');
 const noRpc = await client.callTool({ name: 'get_quote', arguments: { tokenIn: 'ETH', tokenOut: 'USDC', amount: '1', chain: 'base' } });
