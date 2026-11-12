@@ -17,7 +17,7 @@ anyone.
 
 ## BlazePhoenix in one sentence
 
-BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine (coming soon) that proves its own solvency on every transaction. V2, the generation now in development, targets Base, Optimism, Arbitrum, Robinhood Chain and further L2s and is not planned for Ethereum L1. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
+BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine (proof-of-solvency: coming soon). V2, the generation now in development, targets Base, Optimism, Arbitrum, Robinhood Chain and further L2s and is not planned for Ethereum L1. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
 
 **Swap** in the [app](https://blazephoenix.xyz/?tab=swap) · **integrate** with the [SDK](https://github.com/blazephoenixxyz-crypto/SDK) (`npm i @blazephoenix/sdk`) · **connect an agent** to the [MCP server](https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp) (`https://blazephoenix.xyz/mcp`, no key)
 
@@ -75,7 +75,7 @@ The server never prints your URLs, since they may carry a key.
 
 | Tool | What it does |
 |---|---|
-| `get_quote` | Swap quote through your RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg and returns `exactOut` (net of the fee) and `quoterOut` (the Quoter's own scalar), with the Phoenix Check from the default quote of the same request. |
+| `get_quote` | Swap quote through your RPC: net output after the fee, the on-chain floor the Quoter reports for the route (`ironFloor`, `effectiveMinOut`), price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg and returns `exactOut` (net of the fee) and `quoterOut` (the Quoter's own scalar), with the Phoenix Check from the default quote of the same request. |
 | `build_swap` | Quote and return **unsigned** Router calldata, verified against the request, with the minimum output and deadline baked in. The bytes clear the swap math, not the token transfer: run `simulate_swap` from the paying address before signing. Native ETH input needs a 2.x Router (`unsupported_by_version` on 1.x): wrap to WETH first. |
 | `simulate_swap` | Build the swap and dry-run it from a given account with an `eth_call`. |
 | `check_solvency` | Proof-of-solvency: coming soon. Answers `coming_soon` and reads no contract. |
@@ -147,7 +147,12 @@ npm test
 
 The test spawns the built server over stdio with no RPC configured and checks the
 tool surface, that failures come back as tool results, and that no tool takes an
-RPC, key or signer argument or signs anything.
+RPC, key or signer argument or signs anything. It then points the server at local
+loopback JSON-RPC stand-ins (no network, no key) to drive `get_quote`, `build_swap`,
+`simulate_swap` and `check_solvency`, and checks that a failing RPC's error does not
+echo the key in its URL, that the per-chain variables in the README are the ones the
+SDK reads, that every manifest carries the package version, and that
+`BLAZEPHOENIX_VERSION` pins the protocol version.
 
 ## More machine surfaces
 

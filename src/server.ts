@@ -137,7 +137,7 @@ async function main() {
     {
       title: 'Get a swap quote',
       description:
-        'Quote a swap on-chain through YOUR RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix '
+        'Quote a swap on-chain through YOUR RPC: net output after the fee, the on-chain floor the Quoter reports for the route (ironFloor, effectiveMinOut), price impact and the Phoenix '
         + 'Check verdict (it fails closed). Set exact=true for previewPlanExact: every concentrated leg '
         + 'dry-run on its own venue in this block. No tokens move from a holder, so a token that taxes, caps or blocks its own transfer still '
         + 'quotes; only simulate_swap from the paying address exercises the pull of tokenIn and the delivery.',

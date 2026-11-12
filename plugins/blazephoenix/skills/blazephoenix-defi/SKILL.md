@@ -1,6 +1,6 @@
 ---
 name: blazephoenix-defi
-description: Quote and execute DEX swaps whose prices are computed on-chain (no pricing server to trust), reading the chain through the user's OWN RPC; build verified unsigned swap transactions; monitor provably-solvent staking; re-execute published on-chain facts. Use when the user asks for a swap quote on Base/Ethereum/Optimism/Arbitrum/Robinhood Chain, wants MEV-aware execution with an enforced output floor, asks whether BlazePhoenix staking is solvent, or wants an on-chain claim verified rather than trusted.
+description: Quote and execute DEX swaps whose prices are computed on-chain (no pricing server to trust), reading the chain through the user's OWN RPC; build verified unsigned swap transactions; re-execute published on-chain facts. Use when the user asks for a swap quote on Base/Ethereum/Optimism/Arbitrum/Robinhood Chain, wants MEV-aware execution with an enforced output floor, asks about BlazePhoenix proof-of-solvency (coming soon), or wants an on-chain claim verified rather than trusted.
 ---
 
 # BlazePhoenix DeFi skill
@@ -52,10 +52,12 @@ price you trust; optionally `slippageBps`, default 50) to prepare: decode gains
 ERC-20 input. Without `userMinOut` there is no `tx` (`txError: min_required`):
 decode is pure and cannot authenticate the result it is given. On 2.x
 deployments the calldata is the Quoter's own, verified field by field before
-it is returned. The Router
-enforces its floor ON-CHAIN: a worse fill reverts.
+it is returned. Its minimum output is never below your `userMinOut`, and the
+Router reverts a fill under it. The calldata clears the swap math, not the token
+transfer: simulate it as an `eth_call` to the Router from the paying address
+before the user signs (`simulate_swap` on the local server does this).
 
-## Solvency (alertable)
+## Solvency
 
 Proof-of-solvency: coming soon. The local `check_solvency` answers `coming_soon`
 and reads no contract; `GET https://blazephoenix.xyz/api/badge` says the same.

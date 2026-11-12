@@ -17,9 +17,11 @@ node.
 2. Run that `eth_call` on the user's node, for example with `curl` and the
    JSON-RPC body it returns.
 3. `decode_quote` with the `request` object and the hex result. It returns the
-   net output after the fee, the minimum output the Router enforces on-chain,
-   price impact, the Phoenix Check verdict (`ok`, `caution`, `danger`,
-   `blocked`) and, when a `recipient` was given, verified unsigned calldata.
+   net output after the fee, price impact, the Phoenix Check verdict (`ok`,
+   `caution`, `danger`, `blocked`), in preview mode the on-chain floor the
+   Quoter reports for the route, and, when a `recipient` and a `userMinOut`
+   were given, unsigned calldata verified against the request, with a minimum
+   output never below that `userMinOut`.
 
 `get_deployments` returns the versioned contract addresses per chain.
 `get_abi` returns the ABI of one contract, or the error set for decoding a
@@ -30,13 +32,15 @@ revert.
 - State the chain and the protocol version of every quote.
 - Distinguish the quoted output, the minimum output and the delivered output.
 - Never sign or send a transaction for the user. Calldata from `decode_quote`
-  is for the user to review and sign in their own wallet.
+  clears the swap math, not the token transfer: have it simulated as an
+  `eth_call` to the Router from the paying address before the user signs it in
+  their own wallet.
 - Take contract addresses from `get_deployments`, never from memory.
 
 ## Full toolset on the user's node
 
-For one-step quotes, unsigned swap transactions, simulation and staking
-solvency, run the local server with the user's RPC:
+For one-step quotes, unsigned swap transactions, simulation and a
+solvency read (proof-of-solvency: coming soon), run the local server with the user's RPC:
 
 ```bash
 npx -y @blazephoenix/mcp
