@@ -102,7 +102,7 @@ claude mcp add --transport http blazephoenix https://blazephoenix.xyz/mcp
 | Tool | What it does |
 |---|---|
 | `prepare_quote` | The exact `eth_call` to run on your node for a quote, plus a `request` object |
-| `decode_quote` | Turns your node's answer into the quote, the Phoenix Check verdict and verified calldata (pure) |
+| `decode_quote` | Turns your node's answer into the quote, the Phoenix Check verdict and calldata verified against the request (pure; swap math only: simulate it from the payer before sending) |
 | `get_deployments` | The versioned deployment registry |
 | `get_abi` | Generated ABI of a protocol contract |
 

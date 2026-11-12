@@ -41,6 +41,10 @@ check('build_swap points to simulate_swap from the paying address before signing
   /swap math, not the token transfer/.test(bsDesc) && /simulate_swap from the paying address/.test(bsDesc)
   && /tax, cap a wallet or exempt/.test(bsDesc), bsDesc);
 check('build_swap does not say review-then-sign', !/review it, then sign/.test(bsDesc), bsDesc);
+// exact=true dry-runs the legs on their pools; it is not execution-grade for the payer.
+const gqDesc = tools.find((t) => t.name === 'get_quote')?.description ?? '';
+check('get_quote does not promise an execution-grade dry-run and points to simulate_swap from the payer',
+  !/execution-grade/.test(gqDesc) && /simulate_swap from the paying address/.test(gqDesc), gqDesc);
 
 console.log('errors come back as tool results');
 const noRpc = await client.callTool({ name: 'get_quote', arguments: { tokenIn: 'ETH', tokenOut: 'USDC', amount: '1', chain: 'base' } });

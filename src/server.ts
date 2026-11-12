@@ -133,8 +133,9 @@ async function main() {
       title: 'Get a swap quote',
       description:
         'Quote a swap on-chain through YOUR RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix '
-        + 'Check verdict (it fails closed). Set exact=true for an execution-grade dry-run of every leg; '
-        + 'the pull of tokenIn itself (and any transfer tax on it) is exercised only by simulate_swap.',
+        + 'Check verdict (it fails closed). Set exact=true for previewPlanExact: every concentrated leg '
+        + 'dry-run on its own venue in this block. No tokens move from a holder, so a token that taxes, caps or blocks its own transfer still '
+        + 'quotes; only simulate_swap from the paying address exercises the pull of tokenIn and the delivery.',
       inputSchema: strict({ ...quoteShape, exact: z.boolean().optional().describe('true: previewPlanExact, every concentrated leg dry-run') }),
       annotations: { ...readOnly, title: 'Get a swap quote' },
     },
