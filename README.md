@@ -1,7 +1,5 @@
 # BlazePhoenix MCP server
 
-[![solvency](https://img.shields.io/endpoint?url=https%3A%2F%2Fblazephoenix.xyz%2Fapi%2Fbadge)](https://blazephoenix.xyz/solvency)
-
 On-chain DEX aggregator tools for AI agents. The defining property: **every quote
 is computed by the on-chain Quoter contract** (`previewPlan`, a free `eth_call`),
 the same logic that executes the swap, and it runs **on your own RPC**. There is
@@ -9,7 +7,7 @@ no pricing server to trust, and every number an agent relays is reproducible by
 anyone.
 
 - **Local server:** `@blazephoenix/mcp` over stdio. Quotes, unsigned calldata,
-  simulation and solvency, all read through the node you configure.
+  and simulation, all read through the node you configure. Proof-of-solvency: coming soon.
 - **Remote endpoint:** `https://blazephoenix.xyz/mcp` (streamable HTTP,
   stateless). Deployment registry, ABIs and the pure quote codec. It performs no
   RPC call.
@@ -19,7 +17,7 @@ anyone.
 
 ## BlazePhoenix in one sentence
 
-BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine that proves its own solvency on every transaction. V2, the generation now in development, targets Base, Optimism, Arbitrum, Robinhood Chain and further L2s and is not planned for Ethereum L1. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
+BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine (coming soon) that proves its own solvency on every transaction. V2, the generation now in development, targets Base, Optimism, Arbitrum, Robinhood Chain and further L2s and is not planned for Ethereum L1. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
 
 **Swap** in the [app](https://blazephoenix.xyz/?tab=swap) · **integrate** with the [SDK](https://github.com/blazephoenixxyz-crypto/SDK) (`npm i @blazephoenix/sdk`) · **connect an agent** to the [MCP server](https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp) (`https://blazephoenix.xyz/mcp`, no key)
 
@@ -80,7 +78,7 @@ The server never prints your URLs, since they may carry a key.
 | `get_quote` | Swap quote through your RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg and returns `exactOut` (net of the fee) and `quoterOut` (the Quoter's own scalar), with the Phoenix Check from the default quote of the same request. |
 | `build_swap` | Quote and return **unsigned** Router calldata, verified against the request, with the minimum output and deadline baked in. The bytes clear the swap math, not the token transfer: run `simulate_swap` from the paying address before signing. |
 | `simulate_swap` | Build the swap and dry-run it from a given account with an `eth_call`. |
-| `check_solvency` | Live staking solvency: `isSolvent()` and the decoded `solvency()` struct. |
+| `check_solvency` | Proof-of-solvency: coming soon. Answers `coming_soon` and reads no contract. |
 | `get_token_info` | Symbol, decimals and name of a token, read from the chain. |
 | `get_deployments` | The versioned deployment registry: Core, Hub, Solver, Quoter and Router per chain and version. |
 | `verify_deployment` | Check that the registry addresses for a chain and version match what is deployed on-chain. |
@@ -133,7 +131,7 @@ Nothing here requires trusting BlazePhoenix:
 
 ```bash
 # re-execute any published fact live, with its block height
-curl -s "https://blazephoenix.xyz/api/verify?fact=solvency-live"
+curl -s "https://blazephoenix.xyz/api/verify?fact=leg-floor"
 
 # reproduce every live claim in ~60 seconds
 curl -sO https://blazephoenix.xyz/repro/verify-everything.sh && bash verify-everything.sh

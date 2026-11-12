@@ -35,8 +35,8 @@ const strict = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict();
 
 const quoteShape = {
   chain,
-  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC, BZPX'),
-  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC, BZPX'),
+  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address)'),
+  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address)'),
   amount: z.string().optional().describe('input amount in human units, for example "1.5"'),
   amountIn: z.string().optional().describe('input amount in base units, as an integer string'),
   userMinOut: z.string().optional().describe('optional explicit minimum output, in base units of tokenOut; build_swap carries it as given and refuses one below the quote net of slippageBps (min_implausible)'),
@@ -93,6 +93,19 @@ const asSwap = <T extends { recipient: string; from?: string }>(a: T) => ({
   from: a.from as Hex | undefined,
 });
 
+/** BZPX: coming soon. The published SDK range (^1.3.0) still resolves the ticker, so the
+ *  server refuses it here, before any SDK call, with the SDK's own message. */
+const BZPX_COMING_SOON = 'BZPX: coming soon — the token address is not published yet; pass a token address';
+const SOLVENCY_COMING_SOON = 'Proof-of-solvency: coming soon';
+
+function refuseBzpx(sides: Record<string, string | undefined>) {
+  for (const [side, ref] of Object.entries(sides)) {
+    if (typeof ref === 'string' && ref.trim().toUpperCase() === 'BZPX') {
+      throw Object.assign(new Error(`${side}: ${BZPX_COMING_SOON}`), { code: 'bad_request' });
+    }
+  }
+}
+
 function requireAmount(a: { amount?: string; amountIn?: string }) {
   if (!a.amount && !a.amountIn) {
     throw Object.assign(new Error('provide amount (human units) or amountIn (base units)'), { code: 'bad_request' });
@@ -133,6 +146,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         const { exact, ...req } = a;
         if (!exact) return client.quote(req);
@@ -156,6 +170,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         return client.buildSwap(asSwap(a));
       }),
@@ -173,6 +188,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         const plan = await client.buildSwap(asSwap(a));
         const simulation = await client.simulate(plan, a.from as Hex);
@@ -192,11 +208,11 @@ async function main() {
     'check_solvency',
     {
       title: 'Check staking solvency',
-      description: 'Live staking solvency read from the chain: isSolvent() and the decoded solvency() struct. Defaults to Base; answers not_deployed where no staking engine is registered.',
+      description: 'Proof-of-solvency: coming soon. Until then this tool reads no contract and answers coming_soon (an error result, never a verdict).',
       inputSchema: strict({ chain }),
       annotations: { ...readOnly, title: 'Check staking solvency' },
     },
-    async (a) => run(() => client.solvency(a.chain ?? 8453)),
+    async () => fail('coming_soon', SOLVENCY_COMING_SOON),
   );
 
   server.registerTool(
@@ -208,7 +224,10 @@ async function main() {
       inputSchema: strict({ chain, token: z.string().describe('a 0x address, or a symbol such as USDC') }),
       annotations: { ...readOnly, title: 'Get token info' },
     },
-    async (a) => run(() => client.tokenInfo(a.chain, a.token)),
+    async (a) => run(async () => {
+      refuseBzpx({ token: a.token });
+      return client.tokenInfo(a.chain, a.token);
+    }),
   );
 
   server.registerTool(

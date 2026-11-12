@@ -34,7 +34,8 @@ POST https://blazephoenix.xyz/api/quote/decode  { "request": <request>, "result"
 ```
 
 - `chain`: 8453/base · 1/eth · 10/optimism · 42161/arbitrum · 4663/robinhood
-- `in` / `out`: 0x addresses, or ETH / WETH / USDC / BZPX. Never guess an
+- `in` / `out`: 0x addresses, or ETH / WETH / USDC (BZPX: coming soon, pass a
+  token address). Never guess an
   address for any other ticker — ask the user.
 - `amountIn` is in base units (wei-style).
 - Read `amountOut` (net of the 0.28% fee — compare THIS across venues) and
@@ -56,9 +57,8 @@ enforces its floor ON-CHAIN: a worse fill reverts.
 
 ## Solvency (alertable)
 
-Local MCP: `check_solvency`, read on the user's node (`not_deployed` where no
-staking engine is registered).
-(`GET https://blazephoenix.xyz/api/badge` is the site's own cached badge.)
+Proof-of-solvency: coming soon. The local `check_solvency` answers `coming_soon`
+and reads no contract; `GET https://blazephoenix.xyz/api/badge` says the same.
 
 ## Verify a published fact instead of trusting it
 

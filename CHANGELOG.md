@@ -11,6 +11,12 @@
   same cleaning, decided by what the string holds rather than by the name of its key. A lone
   surrogate is removed too, and a capped text never ends in half a character. Line feed and tab
   are kept; addresses, calldata and numbers come back unchanged.
+- BZPX: coming soon. Every tool refuses the `BZPX` ticker before any SDK call or RPC, with
+  the SDK's message ("BZPX: coming soon — the token address is not published yet; pass a
+  token address"); tool descriptions no longer list it as built in.
+- Proof-of-solvency: coming soon. `check_solvency` reads no contract and has no default
+  chain: it answers `coming_soon` as an error result, never a verdict. This supersedes the
+  1.1.3 note on `check_solvency`. The README drops the solvency badge.
 
 ## 1.1.3 — what a tool returns is what it says
 

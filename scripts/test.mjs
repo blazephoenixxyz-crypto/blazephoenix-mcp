@@ -43,6 +43,11 @@ check('build_swap points to simulate_swap from the paying address before signing
 check('build_swap does not say review-then-sign', !/review it, then sign/.test(bsDesc), bsDesc);
 // exact=true dry-runs the legs on their pools; it is not execution-grade for the payer.
 const gqDesc = tools.find((t) => t.name === 'get_quote')?.description ?? '';
+const toolText = JSON.stringify(tools);
+check('tool texts: BZPX is coming soon, solvency is coming soon, and neither sits beside a network',
+  toolText.includes('BZPX: coming soon') && !/ETH, WETH, USDC, BZPX/.test(toolText)
+  && /Proof-of-solvency: coming soon/.test(tools.find((t) => t.name === 'check_solvency')?.description ?? '')
+  && !/Defaults to Base|Live staking/.test(toolText));
 check('get_quote does not promise an execution-grade dry-run and points to simulate_swap from the payer',
   !/execution-grade/.test(gqDesc) && /simulate_swap from the paying address/.test(gqDesc), gqDesc);
 
@@ -169,7 +174,9 @@ const answer = (m, params) => {
   }
   throw new Error(`mock: ${m}`);
 };
+let nodeHits = 0;
 const node = createServer((req, res) => {
+  nodeHits++;
   let body = '';
   req.on('data', (c) => { body += c; });
   req.on('end', () => {
@@ -210,8 +217,31 @@ const simText = sim.content[0].text;
 const simBody = JSON.parse(simText);
 check('simulate_swap: a reverted simulation is ok:false (simulation_reverted)', sim.isError === true && simBody.ok === false && simBody.code === 'simulation_reverted', simText.slice(0, 200));
 check('simulate_swap: the revert text is cleaned and capped', !/[\u0000-\u001f]/.test(simBody.error) && !simText.includes('x'.repeat(130)) && simBody.error.length < 260, simBody.error.slice(0, 120));
-const solv = await live.callTool({ name: 'check_solvency', arguments: { chain: 'base' } });
-check('check_solvency on Base answers not_deployed (no staking engine pinned)', solv.isError === true && solv.content[0].text.includes('not_deployed'), solv.content[0].text.slice(0, 200));
+// Proof-of-solvency: coming soon. check_solvency answers fail-closed with no read, with or
+// without a chain. Mutant: route it back to client.solvency (the node is hit, the text changes).
+const hitsBeforeSolv = nodeHits;
+const solvAll = [await live.callTool({ name: 'check_solvency', arguments: { chain: 'base' } }),
+  await live.callTool({ name: 'check_solvency', arguments: {} })];
+check('check_solvency answers coming_soon fail-closed, with or without a chain, and reads nothing',
+  solvAll.every((r) => r.isError === true && JSON.parse(r.content[0].text).code === 'coming_soon'
+    && JSON.parse(r.content[0].text).error === 'Proof-of-solvency: coming soon') && nodeHits === hitsBeforeSolv,
+  solvAll.map((r) => r.content[0].text.slice(0, 120)).join(' | '));
+// BZPX: coming soon. The published SDK range still resolves the ticker, so the server refuses
+// it before any SDK call. Mutant: drop refuseBzpx (the SDK resolves BZPX and the node is hit).
+const BZPX_MSG = 'BZPX: coming soon — the token address is not published yet; pass a token address';
+const hitsBeforeBzpx = nodeHits;
+const bzCalls = [
+  ['get_quote', { tokenIn: 'BZPX', tokenOut: USDC, amountIn: '1000', chain: 'base' }, 'tokenIn'],
+  ['get_quote', { tokenIn: WETH, tokenOut: 'bzpx', amountIn: '1000', chain: 'base' }, 'tokenOut'],
+  ['build_swap', swapArgs({ tokenOut: ' Bzpx ' }), 'tokenOut'],
+  ['simulate_swap', swapArgs({ tokenIn: 'BZPX', from: '0x' + '22'.repeat(20) }), 'tokenIn'],
+  ['get_token_info', { token: 'BZPX', chain: 'base' }, 'token'],
+];
+const bzRes = await Promise.all(bzCalls.map(([name, args]) => live.callTool({ name, arguments: args })));
+check('BZPX by ticker is refused by every tool with the SDK message, before any RPC',
+  bzRes.every((r, i) => r.isError === true && JSON.parse(r.content[0].text).code === 'bad_request'
+    && JSON.parse(r.content[0].text).error === `${bzCalls[i][2]}: ${BZPX_MSG}`) && nodeHits === hitsBeforeBzpx,
+  bzRes.map((r) => r.content[0].text.slice(0, 100)).join(' | '));
 const pinned = new Client({ name: 'bp-mcp-test-pin', version: '0.0.0' });
 await pinned.connect(new StdioClientTransport({ command: process.execPath, args: [server], env: { ...nodeEnv, BLAZEPHOENIX_VERSION: '2' } }));
 const pinnedSwap = await pinned.callTool({ name: 'build_swap', arguments: swapArgs({}) });
