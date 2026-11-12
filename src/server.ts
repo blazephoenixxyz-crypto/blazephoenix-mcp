@@ -35,8 +35,8 @@ const strict = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict();
 
 const quoteShape = {
   chain,
-  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address)'),
-  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address)'),
+  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address); USDC is USDG on Robinhood'),
+  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address); USDC is USDG on Robinhood'),
   amount: z.string().optional().describe('input amount in human units, for example "1.5"'),
   amountIn: z.string().optional().describe('input amount in base units, as an integer string'),
   userMinOut: z.string().optional().describe('optional explicit minimum output, in base units of tokenOut; build_swap carries it as given and refuses one below the quote net of slippageBps (min_implausible)'),

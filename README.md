@@ -76,7 +76,7 @@ The server never prints your URLs, since they may carry a key.
 | Tool | What it does |
 |---|---|
 | `get_quote` | Swap quote through your RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix Check verdict (`ok / caution / danger / blocked`, fails closed). `exact: true` dry-runs every concentrated leg and returns `exactOut` (net of the fee) and `quoterOut` (the Quoter's own scalar), with the Phoenix Check from the default quote of the same request. |
-| `build_swap` | Quote and return **unsigned** Router calldata, verified against the request, with the minimum output and deadline baked in. The bytes clear the swap math, not the token transfer: run `simulate_swap` from the paying address before signing. |
+| `build_swap` | Quote and return **unsigned** Router calldata, verified against the request, with the minimum output and deadline baked in. The bytes clear the swap math, not the token transfer: run `simulate_swap` from the paying address before signing. Native ETH input needs a 2.x Router (`unsupported_by_version` on 1.x): wrap to WETH first. |
 | `simulate_swap` | Build the swap and dry-run it from a given account with an `eth_call`. |
 | `check_solvency` | Proof-of-solvency: coming soon. Answers `coming_soon` and reads no contract. |
 | `get_token_info` | Symbol, decimals and name of a token, read from the chain. |
