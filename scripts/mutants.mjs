@@ -33,6 +33,18 @@ const WS = 'tokenText: any run of whitespace becomes one space';
 const CAP = 'tokenText: the cap is exact';
 const URLS = 'scrubUrls: path, query, fragment and userinfo are gone';
 const FAULTS = ['get_quote', 'build_swap', 'simulate_swap', 'get_token_info', 'check_solvency'].map((t) => `faults: ${t} answers an error envelope`);
+const SVS = 'stringify: every variation selector';
+const S2060 = 'stringify: the word joiner and invisible operators';
+const SAD = 'stringify: the soft hyphen U+00AD';
+const STAG = 'stringify: every tag character';
+const SCS = 'stringify: every lone surrogate';
+const SALL = 'stringify: every control (Cc) but line feed and tab';
+const KEYS = 'stringify: under keys no list names';
+const NEST = 'stringify: in nested objects and at the top level';
+const ARR = 'stringify: inside arrays';
+const TOK = 'stringify: symbol, name and reason are still cleaned';
+const LEGIT = 'stringify: what the server sends legitimately comes back unchanged';
+const HALF = 'tokenText: a cap that falls inside a surrogate pair';
 
 /** [file, old, new, paired check name prefix(es), opt?] — the id is the position, 1-based. */
 const M = [
@@ -71,9 +83,9 @@ const M = [
   [T, "return '<url>';", 'return m;', 'scrubUrls: a URL the parser refuses is replaced whole'],
   [T, '\\b(?:https?|wss?):\\/\\/', '\\b', 'scrubUrls: text without a URL comes back as given'],
   // server.ts — what reaches the agent
-  [S, "(k === 'symbol' || k === 'name')", "(k === 'symbol')", 'get_token_info: a symbol and a name chosen by the token'],
-  [S, "(k === 'symbol' || k === 'name')", "(k === 'name')", 'get_token_info: a symbol and a name chosen by the token'],
-  [S, "if (typeof x === 'bigint') return x.toString();", "if (typeof x === 'bigint') return Number(x).toString();", 'get_quote: amount "1" is 10^d base units'],
+  [T, "(k === 'symbol' || k === 'name')", "(k === 'symbol')", 'get_token_info: a symbol and a name chosen by the token'],
+  [T, "(k === 'symbol' || k === 'name')", "(k === 'name')", 'get_token_info: a symbol and a name chosen by the token'],
+  [T, "if (typeof x === 'bigint') return x.toString();", "if (typeof x === 'bigint') return Number(x).toString();", 'get_quote: amount "1" is 10^d base units'],
   [S, "typeof err.code === 'string' ? err.code : 'error'", "'error'", ['get_quote: more fractional digits', 'chain id: a node that answers chain 1', 'amounts: amount and amountIn together']],
   [S, 'if (a.amount && a.amountIn) {', 'if (false) {', 'amounts: amount and amountIn together'],
   [S, 'if (!a.amount && !a.amountIn) {', 'if (!a.amount) {', 'faults: between the two sweeps the same node, healthy, quotes'],
@@ -87,6 +99,21 @@ const M = [
   // revert as a revert these two can only be seen by a check that reaches fail() another way.
   [S, 'error: tokenText(scrubUrls(error), 400)', 'error: scrubUrls(error)', SIM],
   [S, 'tokenText(scrubUrls(error), 400)', 'tokenText(scrubUrls(error), 4000)', SIM],
+  // uid 4194: every string on its way out is cleaned by what it holds, under any key and at any
+  // depth; one mutant per sub-class of the class, per vector, and per thing the cleaner must keep.
+  [S, 'text: stringify({ ok: false, code, error: tokenText(scrubUrls(error), 400) })', 'text: JSON.stringify({ ok: false, code, error: scrubUrls(error) })', SIM],
+  [T, '    return visibleText(x);\n  }, 2);', '    return x;\n  }, 2);', [KEYS, NEST, ARR, SVS, S2060, SAD, STAG, SCS, SALL]],
+  [T, '(?![\\t\\n])', '(?![\\t\\n\\p{Variation_Selector}])', [SVS, DIN, HAND]],
+  [T, '(?![\\t\\n])', '(?![\\t\\n\\u{2060}-\\u{2065}])', [S2060, HAND]],
+  [T, '(?![\\t\\n])', '(?![\\t\\n\\u{AD}])', [SAD, HAND]],
+  [T, "    .replace(/[\\u{E0000}-\\u{E007F}]/gu, '') // tag characters: invisible text a model still reads\n    .replace(/(?![\\t\\n])", '    .replace(/(?![\\t\\n\\u{E0000}-\\u{E007F}])', [STAG, TAG]],
+  [T, "    .replace(/\\p{Cs}/gu, ' ');", '    ;', SCS],
+  [T, "if (typeof x !== 'string') return x;", "if (typeof x !== 'string' || /^\\d+$/.test(k)) return x;", ARR],
+  [T, "if (typeof x !== 'string') return x;", "if (typeof x !== 'string' || k === '') return x;", NEST],
+  [T, "    if (k === 'reason') return tokenText(x, 200);\n", '', TOK],
+  [T, '(?![\\t\\n])', '', LEGIT],
+  [T, '    return visibleText(x);', '    return tokenText(x, 1e9);', LEGIT],
+  [T, ".replace(/\\p{Cs}$/u, '')", '', HALF],
 ];
 
 const only = process.argv.slice(2).map(Number);

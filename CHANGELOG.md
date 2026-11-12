@@ -7,6 +7,10 @@
   word joiners and variation selectors no longer pass through.
 - Every error a tool returns is cleaned the same way (printable, one line) and capped at 400
   characters: a revert reason chosen by a token reaches the agent as text, never as layout.
+- Every string a tool returns, under any key and at any depth (arrays included), goes through the
+  same cleaning, decided by what the string holds rather than by the name of its key. A lone
+  surrogate is removed too, and a capped text never ends in half a character. Line feed and tab
+  are kept; addresses, calldata and numbers come back unchanged.
 
 ## 1.1.3 — what a tool returns is what it says
 

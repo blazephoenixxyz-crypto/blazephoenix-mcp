@@ -19,7 +19,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv } from '@blazephoenix/sdk';
-import { scrubUrls, tokenText } from './text.js';
+import { scrubUrls, stringify, tokenText } from './text.js';
 
 const VERSION = '1.1.4';
 
@@ -51,16 +51,6 @@ const swapShape = {
   deadlineSec: z.number().int().min(10).max(3600).optional().describe('deadline horizon in seconds, 10-3600, default 120'),
   exact: z.boolean().optional().describe('true: take the minimum from previewPlanExact (every concentrated leg dry-run, same block), a 50 bps safety margin then slippageBps off it, never below the default minimum; a userMinOut above exactOut less the margin is refused (min_above_exact); one more eth_call'),
 };
-
-/** JSON.stringify that survives bigint. A token's `symbol` and `name` are text its own contract
- *  chose, so they reach the agent cleaned (`tokenText`) wherever they appear in a result. */
-const stringify = (v: unknown) =>
-  JSON.stringify(v, (k, x) => {
-    if (typeof x === 'bigint') return x.toString();
-    if ((k === 'symbol' || k === 'name') && typeof x === 'string') return tokenText(x);
-    if (k === 'reason' && typeof x === 'string') return tokenText(x, 200);
-    return x;
-  }, 2);
 
 const ok = (result: unknown) => ({ content: [{ type: 'text' as const, text: stringify({ ok: true, result }) }] });
 /** An error's text may quote the RPC URL it called, and the words of a token that reverted:

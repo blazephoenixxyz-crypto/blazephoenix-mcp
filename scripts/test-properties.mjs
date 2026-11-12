@@ -15,7 +15,7 @@ import { QUOTER_ABI } from '@blazephoenix/sdk';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const server = join(here, '..', 'dist', 'server.js');
-const { scrubUrls, tokenText } = await import(join(here, '..', 'dist', 'text.js'));
+const { scrubUrls, stringify, tokenText } = await import(join(here, '..', 'dist', 'text.js'));
 
 let passed = 0;
 let failed = 0;
@@ -147,6 +147,95 @@ forAll('tokenText: what is not a string becomes text and never throws', 5, (i) =
   if (out !== want) return `${String(v)} -> ${JSON.stringify(out)}`;
 });
 
+// ─────────────── stringify: every string on its way out, whatever key carries it ───────────────
+// Red at 4b09f64 (uid 4194): only `symbol`, `name` and `reason` were cleaned, so the same text under
+// any other key, or inside an array, reached the agent raw; and no key removed a lone surrogate.
+// The oracle is the code point the test planted: it must not be in what comes back.
+console.log('stringify: every string that leaves the server, under any key and at any depth');
+/** [vector, wrap the planted text, read it back]: the places a string can sit in a tool result. */
+const PLACES = [
+  ['error', (s) => ({ ok: false, code: 'no_route', error: s }), (o) => o.error],
+  ['code', (s) => ({ ok: false, code: s, error: 'e' }), (o) => o.code],
+  ['revertData', (s) => ({ result: { revertData: s } }), (o) => o.result.revertData],
+  ['symbol', (s) => ({ result: { symbol: s } }), (o) => o.result.symbol],
+  ['name', (s) => ({ result: { name: s } }), (o) => o.result.name],
+  ['reason', (s) => ({ result: { reason: s } }), (o) => o.result.reason],
+  ['a nested object', (s) => ({ result: { plan: { route: { note: s } } } }), (o) => o.result.plan.route.note],
+  ['the top level', (s) => s, (o) => o],
+  ['an array', (s) => ({ warnings: ['fine', s] }), (o) => o.warnings[1]],
+  ['an array of arrays', (s) => ({ grid: [[s]] }), (o) => o.grid[0][0]],
+  ['objects in an array', (s) => ({ legs: [{ venue: s }] }), (o) => o.legs[0].venue],
+];
+const ARRAYS = PLACES.slice(8);
+const NESTED = PLACES.slice(6, 8);
+const OTHER_KEYS = PLACES.slice(0, 3);
+const TOKEN_KEYS = PLACES.slice(3, 6);
+const back = (place, s) => place[2](JSON.parse(stringify(place[1](s))));
+/** `cps[i]` planted between letters in every place: it must be gone, the letters kept in order;
+ *  `noGap`: gone without a trace (the tag characters spell words, they do not separate them). */
+const goneFromEvery = (cps, places, noGap = false) => (i) => {
+  const c = String.fromCodePoint(cps[i]);
+  for (const p of places) {
+    const got = back(p, `ab${c}cd${c}`);
+    if (typeof got !== 'string') return `${hex(cps[i])} under ${p[0]}: not a string back: ${JSON.stringify(got)}`;
+    if (got.includes(c)) return `${hex(cps[i])} survives under ${p[0]}: ${JSON.stringify(got)}`;
+    if (got.replace(/ /g, '') !== 'abcd') return `${hex(cps[i])} under ${p[0]}: the letters changed: ${JSON.stringify(got)}`;
+    if (noGap && got !== 'abcd') return `${hex(cps[i])} under ${p[0]}: leaves a gap: ${JSON.stringify(got)}`;
+  }
+};
+const VS = classOf(/\p{Variation_Selector}/u);
+// 16 + 240 + 4 Mongolian free variation selectors: an oracle without the two blocks is broken.
+forAll('stringify: every variation selector (Unicode Variation_Selector: U+FE00-FE0F, U+E0100-E01EF, U+180B-180F) is removed under every key and at every depth',
+  has(VS, 0xfe00, 0xfe0f, 0xe0100, 0xe01ef, 0x180b) && VS.length >= 256 ? VS.length : 1,
+  has(VS, 0xfe00, 0xfe0f, 0xe0100, 0xe01ef, 0x180b) && VS.length >= 256 ? goneFromEvery(VS, PLACES) : () => `broken oracle: ${VS.length} code points`);
+forAll('stringify: the word joiner and invisible operators U+2060-2064 and the unassigned U+2065 are removed under every key and at every depth', 6, goneFromEvery(range(0x2060, 0x2065), PLACES));
+forAll('stringify: the soft hyphen U+00AD is removed under every key and at every depth', 1, goneFromEvery([0xad], PLACES));
+forAll('stringify: every tag character U+E0000-E007F is removed under every key and at every depth, leaving no gap', TAGS.length, goneFromEvery(TAGS, PLACES, true));
+forAll('stringify: every lone surrogate U+D800-DFFF (high or low) is removed under every key and at every depth', 0x800, goneFromEvery(range(0xd800, 0xdfff), PLACES));
+const UNSEEN = [...new Set([...CC, ...CF, ...DI])].filter((cp) => cp !== 0x0a && cp !== 0x09);
+forAll(`stringify: every control (Cc) but line feed and tab, every format character (Cf) and every default-ignorable code point is removed under every key and at every depth (${UNSEEN.length} code points)`,
+  UNSEEN.length > 4000 ? UNSEEN.length : 1, UNSEEN.length > 4000 ? goneFromEvery(UNSEEN, PLACES) : () => `broken oracle: ${UNSEEN.length} code points`);
+// One planted text of every kind at once, per vector: each vector is a check of its own, so the
+// mutant that forgets a vector is named by the check that sees it.
+const MIXED = `ok\u{FE0F}\u{E0101}\u{2060}\u{2065}\u{AD}\u{E0041}\u{200B}\u{202E}\u{85}\u{7F}\u{DC00}\u{D800}end`;
+const MIXED_CPS = [0xfe0f, 0xe0101, 0x2060, 0x2065, 0xad, 0xe0041, 0x200b, 0x202e, 0x85, 0x7f, 0xdc00, 0xd800];
+const vector = (places) => (i) => {
+  const got = back(places[i], MIXED);
+  const left = MIXED_CPS.filter((cp) => got.includes(String.fromCodePoint(cp)));
+  if (left.length) return `under ${places[i][0]}: ${left.map(hex).join(' ')} reach the agent`;
+  if (!got.startsWith('ok') || !got.endsWith('end')) return `under ${places[i][0]}: the visible words are gone: ${JSON.stringify(got)}`;
+};
+forAll('stringify: under keys no list names (error, code, revertData) the text is cleaned', OTHER_KEYS.length, vector(OTHER_KEYS));
+forAll('stringify: in nested objects and at the top level the text is cleaned', NESTED.length, vector(NESTED));
+forAll('stringify: inside arrays (of strings, of arrays, of objects) the text is cleaned', ARRAYS.length, vector(ARRAYS));
+forAll('stringify: symbol, name and reason are still cleaned, made one line and capped (64, 64, 200)', 3, (i) => {
+  const cap = [64, 64, 200][i];
+  const got = back(TOKEN_KEYS[i], `A\nB\t${'z'.repeat(400)}`);
+  if (got !== `A B ${'z'.repeat(cap - 4)}…`) return `under ${TOKEN_KEYS[i][0]}: ${JSON.stringify(got.slice(0, 80))} (${got.length} units)`;
+});
+// What the server legitimately sends must come back byte for byte, wherever it sits: a cleaner
+// that breaks an address, calldata, a number or a line break is a cleaner nobody can keep.
+const LEGIT = [
+  '0x00000000000000000000000000000000000000Aa', '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', `0x${'a1'.repeat(3000)}`, '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+  '-1.5e-18', '{"a":[1,2,{"b":"c"}]}', 'line one\nline two\tcolumn', 'fire \u{1F525} and \u{6F22}\u{5B57} and \u{E9}', 'a\\u200bb', '',
+];
+forAll(`stringify: what the server sends legitimately comes back unchanged in every place (addresses, calldata, numbers, JSON text, line feed and tab, characters outside the BMP; ${LEGIT.length} texts)`, LEGIT.length, (i) => {
+  for (const p of PLACES.filter((q) => !TOKEN_KEYS.includes(q))) {
+    const got = back(p, LEGIT[i]);
+    if (got !== LEGIT[i]) return `under ${p[0]}: ${JSON.stringify(LEGIT[i].slice(0, 40))} came back as ${JSON.stringify(String(got).slice(0, 40))}`;
+  }
+  if (JSON.parse(stringify({ n: 10n ** 30n })).n !== '1000000000000000000000000000000') return 'a bigint is not its decimal string';
+});
+forAll('tokenText: a cap that falls inside a surrogate pair drops the half, never sends it', 3, (i) => {
+  const [s, want] = [
+    [`${'x'.repeat(63)}\u{1F525}`, `${'x'.repeat(63)}…`],
+    [`${'x'.repeat(62)}\u{1F525}`, `${'x'.repeat(62)}\u{1F525}`],
+    [`${'x'.repeat(64)}\u{1F525}`, `${'x'.repeat(64)}…`],
+  ][i];
+  const got = tokenText(s);
+  if (got !== want) return `${JSON.stringify(got.slice(58))}, expected ${JSON.stringify(want.slice(58))}`;
+});
+
 // ───────────────────────────── scrubUrls ─────────────────────────────
 console.log('scrubUrls: every URL form the server can be handed');
 const KEY = 'SECRETatq1111KEY';
@@ -219,6 +308,7 @@ const TEXTS = [
   ['USDC\u0085\u2028\u2029!', 'USDC !'],
   ['US\u061cDC', 'US DC'],
   ['U\u2060S\u00adD\u180eC\ufe0f', 'U S D C'],
+  ['U\u{E0101}S\u{2065}D\u{FE00}C\u{AD}', 'U S D C'],
 ];
 const tokenAddr = (i) => `0x00000000000000000000000000000000000a11${i.toString(16).padStart(2, '0')}`;
 const DECIMALS = { [tokenAddr(0x40)]: 0, [tokenAddr(0x41)]: 6, [tokenAddr(0x42)]: 18, [tokenAddr(0x43)]: 30 };
@@ -330,8 +420,9 @@ console.log('over stdio: a revert text chosen by a token, in the error envelope'
     ['ECONNRESET\u0007\u001b[31m red', 'ECONNRESET'],
     [`ETIMEDOUT ${RLO}${'y'.repeat(900)}`, 'ETIMEDOUT'],
     [`plain ${RLO}words؜`, 'plain'],
+    [`half \u{DC00} a pair \u{D800}\u{FE0F}\u{E0100}\u{2065}`, 'half'],
   ];
-  const unseen = /[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}]/u;
+  const unseen = /[\p{Cc}\p{Cf}\p{Default_Ignorable_Code_Point}\p{Cs}]/u;
   let bad;
   for (const [t, word] of REVERTS) {
     live.state.revert = t;
