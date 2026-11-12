@@ -17,11 +17,12 @@ node.
 2. Run that `eth_call` on the user's node, for example with `curl` and the
    JSON-RPC body it returns.
 3. `decode_quote` with the `request` object and the hex result. It returns the
-   net output after the fee, price impact, the Phoenix Check verdict (`ok`,
-   `caution`, `danger`, `blocked`), in preview mode the on-chain floor the
-   Quoter reports for the route, and, when a `recipient` and a `userMinOut`
-   were given, unsigned calldata verified against the request, with a minimum
-   output never below that `userMinOut`.
+   net output after the fee, in preview mode the on-chain floor the Quoter
+   reports for the route,
+   price impact, the Phoenix Check verdict (`ok`, `caution`, `danger`,
+   `blocked`) and, when a `recipient` was given, verified unsigned calldata.
+   That calldata also needs a `userMinOut`, and its minimum output is never
+   below that `userMinOut`.
 
 `get_deployments` returns the versioned contract addresses per chain.
 `get_abi` returns the ABI of one contract, or the error set for decoding a

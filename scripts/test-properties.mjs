@@ -113,7 +113,7 @@ forAll(`tokenText: the invisible characters of the hand table are removed (${HAN
 });
 
 console.log('tokenText: whitespace, cap, identity');
-const VISIBLE = ['USDC', 'WETH', 'a', 'Z', '0x1f', 'éàü', '日本', 'Ωmega', '$', '(v2)', 'Dai-Stablecoin', '.', '_', '€'];
+const VISIBLE = ['USDC', 'WETH', 'a', 'Z', '0x1f', '\u00e9\u00e0\u00fc', '日本', 'Ωmega', '$', '(v2)', 'Dai-Stablecoin', '.', '_', '€'];
 const BLANKS = [' ', '  ', '\t', '\n', '\r\n', '\u00a0', '\u3000', '\u2003', ' \n\t ', '\u000b', '\u000c', '\u2028', '\u2029', '\ufeff'];
 forAll('tokenText: any run of whitespace becomes one space and the ends are trimmed (2000 cases)', 2000, (i) => {
   const r = rng(0xa11ce + i);
@@ -286,7 +286,9 @@ const ME = '0x00000000000000000000000000000000000000Aa';
 const ERROR_CAP = 400; // the error envelope's own cap, written here by hand
 const mkRoute = (tIn, tOut, amountIn, out) => ({
   hops: [{ tokenIn: tIn, tokenOut: tOut, amountIn, expectedOut: out,
-    legs: [{ pool: '0x00000000000000000000000000000000000000b1', hooks: Z, kind: 2, fee: 500, tickSpacing: 10, zeroForOne: true, stable: false, amountIn, expectedOut: out, auxId: `0x${'0'.repeat(64)}` }] }],
+    // leg tuple written positionally, in the ABI's component order:
+    // address, hooks, kind, fee, tickSpacing, zeroForOne, stable, amountIn, expectedOut, auxId
+    legs: [['0x00000000000000000000000000000000000000b1', Z, 2, 500, 10, true, false, amountIn, out, `0x${'0'.repeat(64)}`]] }],
   totalOut: out, singleOut: out, singleOutFloor: (out * 90n) / 100n, expectedImpactBps: 12n,
   confidenceWad: 10n ** 18n, estGas: 180000n, hasSurplus: false, isV4Bundle: false,
 });
