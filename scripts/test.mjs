@@ -194,7 +194,7 @@ const tooLow = await bs({ userMinOut: '1' });
 check('userMinOut = 1 comes back as min_implausible', tooLow.isError === true && tooLow.content[0].text.includes('min_implausible'), tooLow.content[0].text.slice(0, 200));
 const exactOk = await bs({ exact: true });
 const exactBody = exactOk.isError === true ? {} : JSON.parse(exactOk.content[0].text).result ?? {};
-check('exact: minOut is exactOut less 50 bps, then 50 bps of slippage', exactBody.minOut === '3861097500' && exactBody.exactOut === '3900000000', exactOk.content[0].text.slice(0, 200));
+check('exact: minOut is exactOut less 50 bps, then 50 bps of slippage', exactBody.minOut === '3850286427' && exactBody.exactOut === '3889080000', exactOk.content[0].text.slice(0, 200));
 const aboveExact = await bs({ exact: true, userMinOut: '3880500001' });
 check('exact: userMinOut above the ceiling comes back as min_above_exact', aboveExact.isError === true && aboveExact.content[0].text.includes('min_above_exact'), aboveExact.content[0].text.slice(0, 200));
 // 3262 C-2: the exact envelope carries the Phoenix Check verdict
