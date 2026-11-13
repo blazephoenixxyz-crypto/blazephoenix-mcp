@@ -19,7 +19,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv } from '@blazephoenix/sdk';
-import { scrubUrls, tokenText } from './text.js';
+import { scrubUrls, stringify, tokenText } from './text.js';
 
 const VERSION = '1.1.4';
 
@@ -35,8 +35,8 @@ const strict = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict();
 
 const quoteShape = {
   chain,
-  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC, BZPX'),
-  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC, BZPX'),
+  tokenIn: z.string().describe('input token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address); USDC is USDG on Robinhood'),
+  tokenOut: z.string().describe('output token: a 0x address, or a symbol such as ETH, WETH, USDC (BZPX: coming soon, pass a token address); USDC is USDG on Robinhood'),
   amount: z.string().optional().describe('input amount in human units, for example "1.5"'),
   amountIn: z.string().optional().describe('input amount in base units, as an integer string'),
   userMinOut: z.string().optional().describe('optional explicit minimum output, in base units of tokenOut; build_swap carries it as given and refuses one below the quote net of slippageBps (min_implausible)'),
@@ -52,21 +52,13 @@ const swapShape = {
   exact: z.boolean().optional().describe('true: take the minimum from previewPlanExact (every concentrated leg dry-run, same block), a 50 bps safety margin then slippageBps off it, never below the default minimum; a userMinOut above exactOut less the margin is refused (min_above_exact); one more eth_call'),
 };
 
-/** JSON.stringify that survives bigint. A token's `symbol` and `name` are text its own contract
- *  chose, so they reach the agent cleaned (`tokenText`) wherever they appear in a result. */
-const stringify = (v: unknown) =>
-  JSON.stringify(v, (k, x) => {
-    if (typeof x === 'bigint') return x.toString();
-    if ((k === 'symbol' || k === 'name') && typeof x === 'string') return tokenText(x);
-    if (k === 'reason' && typeof x === 'string') return tokenText(x, 200);
-    return x;
-  }, 2);
-
 const ok = (result: unknown) => ({ content: [{ type: 'text' as const, text: stringify({ ok: true, result }) }] });
-/** An error's text may quote the RPC URL it called; every URL in it is reduced to its host. */
+/** An error's text may quote the RPC URL it called, and the words of a token that reverted:
+ *  every URL in it is reduced to its host, and the text is cleaned and capped like any other
+ *  text that comes from outside. */
 const fail = (code: string, error: string) => ({
   isError: true,
-  content: [{ type: 'text' as const, text: stringify({ ok: false, code, error: scrubUrls(error) }) }],
+  content: [{ type: 'text' as const, text: stringify({ ok: false, code, error: tokenText(scrubUrls(error), 400) }) }],
 });
 
 async function run(fn: () => Promise<unknown>) {
@@ -101,6 +93,19 @@ const asSwap = <T extends { recipient: string; from?: string }>(a: T) => ({
   from: a.from as Hex | undefined,
 });
 
+/** BZPX: coming soon. The published SDK range (^1.3.0) still resolves the ticker, so the
+ *  server refuses it here, before any SDK call, with the SDK's own message. */
+const BZPX_COMING_SOON = 'BZPX: coming soon — the token address is not published yet; pass a token address';
+const SOLVENCY_COMING_SOON = 'Proof-of-solvency: coming soon';
+
+function refuseBzpx(sides: Record<string, string | undefined>) {
+  for (const [side, ref] of Object.entries(sides)) {
+    if (typeof ref === 'string' && ref.trim().toUpperCase() === 'BZPX') {
+      throw Object.assign(new Error(`${side}: ${BZPX_COMING_SOON}`), { code: 'bad_request' });
+    }
+  }
+}
+
 function requireAmount(a: { amount?: string; amountIn?: string }) {
   if (!a.amount && !a.amountIn) {
     throw Object.assign(new Error('provide amount (human units) or amountIn (base units)'), { code: 'bad_request' });
@@ -132,7 +137,7 @@ async function main() {
     {
       title: 'Get a swap quote',
       description:
-        'Quote a swap on-chain through YOUR RPC: net output after the fee, the minimum the Router enforces, price impact and the Phoenix '
+        'Quote a swap on-chain through YOUR RPC: net output after the fee, the on-chain floor the Quoter reports for the route (ironFloor, effectiveMinOut), price impact and the Phoenix '
         + 'Check verdict (it fails closed). Set exact=true for previewPlanExact: every concentrated leg '
         + 'dry-run on its own venue in this block. No tokens move from a holder, so a token that taxes, caps or blocks its own transfer still '
         + 'quotes; only simulate_swap from the paying address exercises the pull of tokenIn and the delivery.',
@@ -141,6 +146,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         const { exact, ...req } = a;
         if (!exact) return client.quote(req);
@@ -164,6 +170,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         return client.buildSwap(asSwap(a));
       }),
@@ -181,6 +188,7 @@ async function main() {
     },
     async (a) =>
       run(async () => {
+        refuseBzpx({ tokenIn: a.tokenIn, tokenOut: a.tokenOut });
         requireAmount(a);
         const plan = await client.buildSwap(asSwap(a));
         const simulation = await client.simulate(plan, a.from as Hex);
@@ -200,11 +208,11 @@ async function main() {
     'check_solvency',
     {
       title: 'Check staking solvency',
-      description: 'Live staking solvency read from the chain: isSolvent() and the decoded solvency() struct. Defaults to Base; answers not_deployed where no staking engine is registered.',
+      description: 'Proof-of-solvency: coming soon. Until then this tool reads no contract and answers coming_soon (an error result, never a verdict).',
       inputSchema: strict({ chain }),
       annotations: { ...readOnly, title: 'Check staking solvency' },
     },
-    async (a) => run(() => client.solvency(a.chain ?? 8453)),
+    async () => fail('coming_soon', SOLVENCY_COMING_SOON),
   );
 
   server.registerTool(
@@ -216,7 +224,10 @@ async function main() {
       inputSchema: strict({ chain, token: z.string().describe('a 0x address, or a symbol such as USDC') }),
       annotations: { ...readOnly, title: 'Get token info' },
     },
-    async (a) => run(() => client.tokenInfo(a.chain, a.token)),
+    async (a) => run(async () => {
+      refuseBzpx({ token: a.token });
+      return client.tokenInfo(a.chain, a.token);
+    }),
   );
 
   server.registerTool(
