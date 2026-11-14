@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0
 
 - Token text: every character a reader cannot see is removed by Unicode property (control,
   format, default-ignorable), not from a list. U+061C (Arabic letter mark), the soft hyphen,
