@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv } from '@blazephoenix/sdk';
 import { scrubUrls, stringify, tokenText } from './text.js';
 
-const VERSION = '1.1.4';
+const VERSION = '1.2.0';
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'expected a 0x address (40 hex characters)');
 const chain = z
