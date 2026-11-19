@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.0
+
+- `xray_token`: the token X-Ray of `@blazephoenix/sdk/xray` (1.6.0), run through your own RPC on a
+  pinned block. It reports the measured taxes in bps, the amounts, the block, the tier the node
+  allowed and the conditions, and lists what was not measured and why. A rate-limited or
+  unavailable node is `NOT_MEASURED`; `MEASURED` is shown only when every instrument measured.
+  `maxTaxBps` is required.
+- `@blazephoenix/sdk` pinned to 1.6.0.
+
 ## 1.2.0
 
 - Token text: every character a reader cannot see is removed by Unicode property (control,

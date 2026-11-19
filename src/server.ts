@@ -18,10 +18,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { BlazePhoenix, rpcFromEnv } from '@blazephoenix/sdk';
+import { BlazePhoenix, rpcFromEnv, resolveChain } from '@blazephoenix/sdk';
 import { scrubUrls, stringify, tokenText } from './text.js';
+import { transportOver, xrayToken } from './xray.js';
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'expected a 0x address (40 hex characters)');
 const chain = z
@@ -250,6 +251,36 @@ async function main() {
       annotations: { ...readOnly, title: 'Verify a deployment on-chain' },
     },
     async (a) => run(() => client.verifyDeployment({ chain: a.chain, version: a.version })),
+  );
+
+  server.registerTool(
+    'xray_token',
+    {
+      title: 'X-Ray a token',
+      description:
+        'Measure a token through YOUR RPC only (eth_call / eth_simulateV1; no third-party service). On a pinned block it simulates, '
+        + 'from a fresh address, a buy of amountIn wei through the BlazePhoenix Router, a sell, a wallet-to-wallet transfer and a '
+        + 'transfer to the pool, and reports the taxes in bps, the amounts, the block, the tier and the conditions of the measurement. '
+        + 'Verdict: CONDEMN (a sell reverted or delivered nothing, a transfer to the pool reverted, or a measured tax >= maxTaxBps); '
+        + 'WARN (something failed or was not measured); NOT_MEASURED (nothing was measured, for example the node rate-limited the run); '
+        + 'MEASURED (nothing failed among what was measured, under the stated conditions). notMeasured lists what was not measured and why: '
+        + 'the limits of the tier the node allowed (A eth_simulateV1, sell in a later block; B eth_call with a code override, one block, '
+        + 'a sender with code; C plain eth_call, Multicall3 as the caller), other amounts, your own address, and future owner actions '
+        + '(blacklist, fee change, pause, upgrade, liquidity withdrawal), which no simulation reaches.',
+      inputSchema: strict({
+        chain: z.union([z.string(), z.number()]).describe('base | eth | arbitrum, or a numeric chain id'),
+        token: address.describe('the token to measure (0x address)'),
+        amountIn: z.string().regex(/^[1-9][0-9]{0,30}$/, 'a positive integer, in wei').describe('wei of the native token spent on the simulated buy, as an integer string'),
+        maxTaxBps: z.number().int().min(1).max(10000).describe('the tax, in bps, at or above which a measured buy, sell or transfer tax condemns (1-10000)'),
+      }),
+      annotations: { ...readOnly, title: 'X-Ray a token' },
+    },
+    async (a) => run(async () => {
+      const chainId = resolveChain(a.chain);
+      const node = await client.rpc.client(chainId);
+      const transport = transportOver((req) => node.request({ method: req.method, params: req.params } as never));
+      return xrayToken(transport, { chainId, token: a.token, amountIn: BigInt(a.amountIn), maxTaxBps: a.maxTaxBps });
+    }),
   );
 
   await server.connect(new StdioServerTransport());
