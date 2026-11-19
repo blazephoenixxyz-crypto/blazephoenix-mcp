@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test.mjs && node scripts/test-properties.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-properties.mjs && node scripts/test-xray.mjs",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
