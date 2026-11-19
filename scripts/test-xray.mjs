@@ -147,9 +147,15 @@ const noRpc = await bare.callTool({ name: 'xray_token', arguments: xargs });
 let noRpcCode = '';
 try { noRpcCode = JSON.parse(noRpc.content[0].text).code; } catch { /* not JSON */ }
 check('xray_token without an RPC: rpc_required', noRpc.isError === true && noRpcCode === 'rpc_required', noRpc.content?.[0]?.text);
+// Refused by the schema, before the RPC is looked up: not the rpc_required of a call that went on with a default.
 let noMax = false;
-try { const r = await bare.callTool({ name: 'xray_token', arguments: { ...xargs, maxTaxBps: undefined } }); noMax = r.isError === true; } catch { noMax = true; }
-check('xray_token without maxTaxBps is refused', noMax);
+let noMaxText = '';
+try {
+  const r = await bare.callTool({ name: 'xray_token', arguments: { ...xargs, maxTaxBps: undefined } });
+  noMaxText = r.content?.[0]?.text ?? '';
+  noMax = r.isError === true && !noMaxText.includes('rpc_required');
+} catch { noMax = true; }
+check('xray_token without maxTaxBps is refused before any RPC work', noMax, noMaxText);
 await bare.close();
 
 // A local node serving one transcript at a time (eth_chainId is answered for the router's chain check).
