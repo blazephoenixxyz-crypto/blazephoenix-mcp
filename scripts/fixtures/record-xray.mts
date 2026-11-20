@@ -17,6 +17,8 @@ const SC: Record<string, any> = {
   sellRevert: { sellRevert: true },
   probe429: { probe: { 'A:d4': lim, 'A:d2': lim, B: lim, C: lim } },
   tierB: { probe: { 'A:d4': down, 'A:d2': down } },
+  // A 2000 bps sell-only tax kept by the token (no swapback: cap never reached): its own balance rises on the sale.
+  floor: { swapback: { taxBps: 2000n, cap: 10n ** 30n, start: 0n } },
 };
 const codeName = new Map(Object.entries(BASE_CODE).map(([k, v]) => [v, k]));
 const ded = (x: any): any => (typeof x === 'string' && codeName.has(x) ? { $code: codeName.get(x) } : Array.isArray(x) ? x.map(ded) : x && typeof x === 'object' ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, ded(v)])) : x);

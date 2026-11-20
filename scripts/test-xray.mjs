@@ -7,8 +7,10 @@
 // of {method, params}; replies to the same request are served in order, the last one repeating.
 // Every lookup must hit: a miss means the SDK asked for something the transcript never answered.
 //
-// The tax oracle is the fake token's own tax (300 bps in happy300), set before the run, not read
-// from the output. Other exact amounts are the recorded outputs of the same fake.
+// The tax oracle is the fake token's own tax (300 bps in happy300; 2000 bps on the sell only in floor,
+// kept by the token), set before the run, not read from the output. Other exact amounts are the
+// recorded outputs of the same fake. The tier limits are pinned as literals, copied from TIER_LIMITS
+// in the SDK (src/xray/tiers.ts) at the version the fixture was recorded with.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { HttpRequestError, MethodNotFoundRpcError, RpcRequestError } from 'viem';
@@ -49,6 +51,21 @@ const run = async (name) => {
   return { out, misses: rp.misses };
 };
 const why = (out) => (out.notMeasured ?? []).map((n) => n.why);
+const FOT_BUY = 'buy of a fee-on-transfer token: the Router moves it twice (pool to router, router to buyer), each taxed, but the buy tax is read as one move (D = (1 - t) * net), so it is over-stated (conservative), not measured as two';
+const TIER_A_LIMITS = [
+  'Nitro chains: block.number seen by contracts is the L1 number; a later-sell gap in L2 blocks does not move it',
+  'transfer to the pair: a fee paid to another wallet that donates tokens back into the pair in the same transfer (no swap) offsets the pair balance; no balance read separates it, so that fee is understated',
+  'later sell of a fee-on-transfer token: the Router prices it on pair balance minus reserve, so it also takes what the transfer to the pair left in the pair; the seller gets more than the quote and the later sell is NOT_MEASURED (over-credit); that excess is not modelled',
+  FOT_BUY,
+];
+const TIER_B_LIMITS = [
+  'tx.origin has code (the injected probe)',
+  'transfer to the pair: the token contract balance is not read, so its tax is not measured',
+  'the quote safety buffer is not read: a tax is MEASURED only when it plus the protocol maximum (10 bps) is below maxTaxBps',
+  'no later sell (one block)',
+  'block number/time = pinned block B, not B+1',
+  FOT_BUY,
+];
 
 console.log('xray: replayed scenarios (pure)');
 {
@@ -71,9 +88,13 @@ console.log('xray: replayed scenarios (pure)');
     && !(out.notMeasured ?? []).some((n) => n.what === 'roundTripLossBps')
     && out.instruments.every((i) => !Object.hasOwn(i.values ?? {}, 'roundTripLossBps'))
     && why(out).some((w) => /future owner actions/.test(w)) && why(out).some((w) => /your own address/.test(w)), JSON.stringify(out.notMeasured));
-  check('happy300: tier A covers every class and carries its one limit, from the SDK report',
-    JSON.stringify(out.uncovered) === '[]' && out.limits?.length === 1 && why(out).includes(`tier A:d4: ${out.limits[0]}`)
+  check('happy300: tier A covers every class and carries its four limits, from the SDK report',
+    JSON.stringify(out.uncovered) === '[]' && JSON.stringify(out.limits) === JSON.stringify(TIER_A_LIMITS)
+    && TIER_A_LIMITS.every((l) => why(out).includes(`tier A:d4: ${l}`))
     && !(out.notMeasured ?? []).some((n) => n.what === 'tier uncovered'), JSON.stringify([out.uncovered, out.limits]));
+  check('happy300: the economic taxes (sale against the quote) are 300 bps, the floor 300, no quote buffer',
+    sim.buyEconBps === '300' && sim.sellEconBps === '300' && sim.sellLaterEconBps === '300' && sim.taxFloorBps === '300' && sim.quoteBufferBps === '0'
+    && !(out.notMeasured ?? []).some((n) => /EconBps$|^taxFloorBps$|^quoteBufferBps$/.test(n.what)), JSON.stringify(sim));
   check('happy300: no word of safety in the output', !NOT_SAID.test(JSON.stringify(out)));
 }
 {
@@ -103,9 +124,26 @@ console.log('xray: replayed scenarios (pure)');
     && !why(out).some((w) => w.startsWith('tier C')), JSON.stringify(why(out)));
   check('tierB: uncovered and limits are the SDK report\'s, in the fields and in notMeasured (one producer)',
     JSON.stringify(out.uncovered) === JSON.stringify(['a6', 'a8', 'b2', 'e1', 'i3'])
-    && JSON.stringify(out.limits) === JSON.stringify(['tx.origin has code (the injected probe)', 'no later sell (one block)', 'block number/time = pinned block B, not B+1'])
+    && JSON.stringify(out.limits) === JSON.stringify(TIER_B_LIMITS)
     && why(out).includes('classes not covered at tier B: a6, a8, b2, e1, i3')
     && out.limits.every((l) => why(out).includes(`tier B: ${l}`)), JSON.stringify([out.uncovered, out.limits]));
+  const sim = out.instruments?.find((i) => i.instrument === 'sim')?.values ?? {};
+  check('tierB: the protocol quote buffer (10 bps) is shown, the transfer to the pair is not covered, the unread sell tax is not measured',
+    sim.quoteBufferBps === '10' && sim.pairTransferCovered === false && sim.sellTaxBps === null
+    && (out.notMeasured ?? []).some((n) => n.what === 'sellTaxBps') && !(out.notMeasured ?? []).some((n) => n.what === 'quoteBufferBps'), JSON.stringify(sim));
+}
+{
+  const { out, misses } = await run('floor');
+  const s = out.instruments?.find((i) => i.instrument === 'sim') ?? {};
+  check('floor: every request is in the transcript', misses === 0, misses);
+  check('floor: a 2000 bps sell tax kept by the token condemns on the economic tax, and the SDK said CONDEMN',
+    out.verdict === 'CONDEMN' && out.sdkVerdict === 'CONDEMN' && s.status === 'CONDEMN' && s.reason === 'sellEconBps 2000 >= 500', `${out.verdict} ${out.sdkVerdict} ${s.reason}`);
+  check('floor: sellEconBps and the tax floor are 2000 bps (the fake token tax), shown as measured',
+    s.values?.sellEconBps === '2000' && s.values?.taxFloorBps === '2000'
+    && !(out.notMeasured ?? []).some((n) => n.what === 'sellEconBps' || n.what === 'taxFloorBps'), JSON.stringify(s.values));
+  check('floor: the swap-side sell tax the pair did not see is listed as not measured, not as 0',
+    s.values?.sellTaxBps === null && (out.notMeasured ?? []).some((n) => n.what === 'sellTaxBps'), JSON.stringify(s.values));
+  check('floor: no word of safety in the output', !NOT_SAID.test(JSON.stringify(out)));
 }
 {
   const out = await xrayToken(async (batch) => batch.map(() => ({ httpStatus: 429, body: 'Too Many Requests' })), input);
@@ -217,6 +255,13 @@ const e2e = async (name) => {
   const { text, out, misses: m } = await e2e('tierB');
   check('e2e tierB: a node that refuses eth_simulateV1 (-32601 over HTTP) is measured on tier B',
     m === 0 && out.verdict === 'MEASURED' && out.tier === 'B' && why(out).includes('tier B: no later sell (one block)'), `${m} ${text.slice(0, 300)}`);
+}
+{
+  const { text, out, misses: m } = await e2e('floor');
+  const s = out.instruments?.find((i) => i.instrument === 'sim') ?? {};
+  check('e2e floor: CONDEMN over HTTP on sellEconBps 2000, every request in the transcript',
+    m === 0 && out.verdict === 'CONDEMN' && s.reason === 'sellEconBps 2000 >= 500' && s.values?.taxFloorBps === '2000', `${m} ${text.slice(0, 300)}`);
+  check('e2e floor: no word of safety in the output', text !== '' && !NOT_SAID.test(text));
 }
 {
   const { text, out, misses: m } = await e2e('probe429');
