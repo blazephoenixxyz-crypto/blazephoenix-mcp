@@ -74,9 +74,11 @@ export function present(r: XrayReport, a: XrayArgs) {
     + `buying with ${r.amountIn} wei${c?.sender ? ` from ${c.sender}` : ''}${c && c.blocksLater > 0 ? `, the sell ${c.blocksLater} blocks later` : ''}`
     + `${c?.gasPrice !== null && c?.gasPrice !== undefined ? `, gas price ${c.gasPrice} wei` : ''}`;
   const notMeasured: { what: string; why: string }[] = [];
+  // roundTripLossBps is retired in the SDK (always null since the round-trip guard left): not shown, never "not measured".
+  const shown = (v: Record<string, unknown>) => Object.fromEntries(Object.entries(v ?? {}).filter(([k]) => k !== 'roundTripLossBps'));
   for (const i of r.instruments) if (i.status === 'NOT_MEASURED') notMeasured.push({ what: i.name, why: i.reason });
   if (sim && sim.status !== 'NOT_MEASURED') {
-    for (const [k, v] of Object.entries(sim.values)) if (v === null) notMeasured.push({ what: k, why: 'not measured in this run' });
+    for (const [k, v] of Object.entries(shown(sim.values))) if (v === null) notMeasured.push({ what: k, why: 'not measured in this run' });
     for (const n of (sim.values.notes as string[] | undefined) ?? []) notMeasured.push({ what: 'sim', why: n });
   }
   // The tier's limits and the classes it cannot cover come from the SDK report (one producer).
@@ -95,7 +97,7 @@ export function present(r: XrayReport, a: XrayArgs) {
     tier: r.rung,
     measuredAt,
     legs: r.legs,
-    instruments: r.instruments.map((i) => ({ instrument: i.name, status: i.status, reason: i.reason, values: i.values, conditions: i.conditions })),
+    instruments: r.instruments.map((i) => ({ instrument: i.name, status: i.status, reason: i.reason, values: shown(i.values), conditions: i.conditions })),
     uncovered: r.uncovered,
     limits: r.limits,
     notMeasured,

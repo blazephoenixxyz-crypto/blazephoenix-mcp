@@ -66,9 +66,10 @@ console.log('xray: replayed scenarios (pure)');
     JSON.stringify(out.legs) === JSON.stringify([{ leg: 'buy', amountIn: '1000000000000000' }, { leg: 'sell', amountIn: '483642000000000000' }, { leg: 'transfer', amountIn: '48364200000000000' }]),
     JSON.stringify(out.legs));
   check('happy300: maxTaxBps and amountIn are echoed', out.maxTaxBps === 500 && out.amountIn === '1000000000000000');
-  check('happy300: notMeasured names the tier A limit, the round trip, owner actions and your own address',
+  check('happy300: notMeasured names the tier A limit, owner actions and your own address; the retired round trip is not shown',
     why(out).some((w) => w.startsWith('tier A:d4: Nitro chains')) && !why(out).some((w) => w.startsWith('tier B'))
-    && (out.notMeasured ?? []).some((n) => n.what === 'roundTripLossBps')
+    && !(out.notMeasured ?? []).some((n) => n.what === 'roundTripLossBps')
+    && out.instruments.every((i) => !Object.hasOwn(i.values ?? {}, 'roundTripLossBps'))
     && why(out).some((w) => /future owner actions/.test(w)) && why(out).some((w) => /your own address/.test(w)), JSON.stringify(out.notMeasured));
   check('happy300: tier A covers every class and carries its one limit, from the SDK report',
     JSON.stringify(out.uncovered) === '[]' && out.limits?.length === 1 && why(out).includes(`tier A:d4: ${out.limits[0]}`)
