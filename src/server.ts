@@ -260,8 +260,8 @@ async function main() {
       description:
         'Measure a token through YOUR RPC only (eth_call / eth_simulateV1; no third-party service). On a pinned block it simulates, '
         + 'from a fresh address, a buy of amountIn wei through the BlazePhoenix Router, a sell, a wallet-to-wallet transfer and a '
-        + 'transfer to the pool, and reports the taxes in bps, the amounts, the block, the tier and the conditions of the measurement. '
-        + 'Verdict: CONDEMN (a sell reverted or delivered nothing, a transfer to the pool reverted, or a measured tax >= maxTaxBps); '
+        + 'transfer to the pair, and reports the taxes in bps, the amounts, the block, the tier and the conditions of the measurement. '
+        + 'Verdict: CONDEMN (a sell reverted or delivered nothing, a transfer to the pair reverted, or a measured tax >= maxTaxBps); '
         + 'WARN (something failed or was not measured); NOT_MEASURED (nothing was measured, for example the node rate-limited the run); '
         + 'MEASURED (nothing failed among what was measured, under the stated conditions). notMeasured lists what was not measured and why: '
         + 'the limits of the tier the node allowed (A eth_simulateV1, sell in a later block; B eth_call with a code override, one block, '

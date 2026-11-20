@@ -38,21 +38,6 @@ export function transportOver(request: (req: Rpc) => Promise<unknown>): Transpor
     request(req).then((result): Reply => ({ jsonrpc: '2.0', id: 1, result }), replyOf)));
 }
 
-/** What a rung cannot see, by construction (TIER_UNCOVERED of the SDK: B adds a6, a8, b2, e1, i3; C adds a1, a7). */
-const TIER_LIMITS: Record<string, string[]> = {
-  A: ['tier A (eth_simulateV1): buy and sell from a fresh address with no code, the sell in a later simulated block; '
-    + 'behaviour that depends on your own address, on a delay longer than the simulated gap, or on future randomness is not measured'],
-  B: ['tier B (eth_call with a code override): buy and sell run in one call, in one block; delays, cooldowns and same-block rules are '
-    + 'not measured (a cooldown can read as a failure)',
-  'tier B: the sender has code (tx.origin with code); a token that treats contracts differently from wallets is not measured as it treats a wallet'],
-  C: ['tier C (plain eth_call): the caller of the Router is Multicall3, a contract, and the sender balance is fixed; '
-    + 'a token that tells callers apart is not measured as it treats a wallet'],
-};
-const rungLimits = (rung: string | null): string[] => {
-  if (rung === null) return [];
-  const t = rung[0];
-  return t === 'A' ? TIER_LIMITS.A : t === 'B' ? [...TIER_LIMITS.A, ...TIER_LIMITS.B] : t === 'C' ? [...TIER_LIMITS.A, ...TIER_LIMITS.B, ...TIER_LIMITS.C] : [`tier ${rung}: limits unknown`];
-};
 /** No simulation reaches these, on any tier. */
 const NEVER = [
   'future owner actions (a blacklist after the purchase, a fee change, a pause, an upgrade, a liquidity withdrawal) cannot be simulated',
@@ -60,7 +45,7 @@ const NEVER = [
 ];
 
 const MEANING: Record<ShownVerdict, string> = {
-  CONDEMN: 'a measurement failed: a sell reverted or delivered nothing, a transfer to the pool reverted, or a measured tax reached maxTaxBps',
+  CONDEMN: 'a measurement failed: a sell reverted or delivered nothing, a transfer to the pair reverted, or a measured tax reached maxTaxBps',
   WARN: 'something failed or was not measured; read the instruments and notMeasured',
   NOT_MEASURED: 'nothing was measured; this is a fact about the node or the route, not about the token',
   MEASURED: 'nothing failed among what was measured, under these conditions; what was not measured is listed in notMeasured',
@@ -94,7 +79,9 @@ export function present(r: XrayReport, a: XrayArgs) {
     for (const [k, v] of Object.entries(sim.values)) if (v === null) notMeasured.push({ what: k, why: 'not measured in this run' });
     for (const n of (sim.values.notes as string[] | undefined) ?? []) notMeasured.push({ what: 'sim', why: n });
   }
-  for (const l of rungLimits(r.rung)) notMeasured.push({ what: 'tier limit', why: l });
+  // The tier's limits and the classes it cannot cover come from the SDK report (one producer).
+  if (r.uncovered && r.uncovered.length > 0) notMeasured.push({ what: 'tier uncovered', why: `classes not covered at tier ${r.rung}: ${r.uncovered.join(', ')}` });
+  for (const l of r.limits) notMeasured.push({ what: 'tier limit', why: `tier ${r.rung}: ${l}` });
   for (const l of NEVER) notMeasured.push({ what: 'any tier', why: l });
   return plain({
     verdict,
@@ -109,6 +96,8 @@ export function present(r: XrayReport, a: XrayArgs) {
     measuredAt,
     legs: r.legs,
     instruments: r.instruments.map((i) => ({ instrument: i.name, status: i.status, reason: i.reason, values: i.values, conditions: i.conditions })),
+    uncovered: r.uncovered,
+    limits: r.limits,
     notMeasured,
     text: r.text,
   }) as Record<string, unknown>;
@@ -129,6 +118,8 @@ function notMeasuredRun(a: XrayArgs, why: string) {
     tier: null,
     measuredAt: null,
     instruments: [],
+    uncovered: null,
+    limits: [],
     notMeasured: [{ what: 'everything', why }, ...NEVER.map((l) => ({ what: 'any tier', why: l }))],
   }) as Record<string, unknown>;
 }

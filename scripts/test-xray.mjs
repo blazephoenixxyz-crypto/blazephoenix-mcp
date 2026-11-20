@@ -67,9 +67,12 @@ console.log('xray: replayed scenarios (pure)');
     JSON.stringify(out.legs));
   check('happy300: maxTaxBps and amountIn are echoed', out.maxTaxBps === 500 && out.amountIn === '1000000000000000');
   check('happy300: notMeasured names the tier A limit, the round trip, owner actions and your own address',
-    why(out).some((w) => w.startsWith('tier A (eth_simulateV1)')) && !why(out).some((w) => w.startsWith('tier B'))
+    why(out).some((w) => w.startsWith('tier A:d4: Nitro chains')) && !why(out).some((w) => w.startsWith('tier B'))
     && (out.notMeasured ?? []).some((n) => n.what === 'roundTripLossBps')
     && why(out).some((w) => /future owner actions/.test(w)) && why(out).some((w) => /your own address/.test(w)), JSON.stringify(out.notMeasured));
+  check('happy300: tier A covers every class and carries its one limit, from the SDK report',
+    JSON.stringify(out.uncovered) === '[]' && out.limits?.length === 1 && why(out).includes(`tier A:d4: ${out.limits[0]}`)
+    && !(out.notMeasured ?? []).some((n) => n.what === 'tier uncovered'), JSON.stringify([out.uncovered, out.limits]));
   check('happy300: no word of safety in the output', !NOT_SAID.test(JSON.stringify(out)));
 }
 {
@@ -95,8 +98,13 @@ console.log('xray: replayed scenarios (pure)');
   check('tierB: every request is in the transcript', misses === 0, misses);
   check('tierB: eth_simulateV1 refused (-32601), measured on tier B', out.verdict === 'MEASURED' && out.tier === 'B', `${out.verdict} ${out.tier}`);
   check('tierB: notMeasured names the tier B limits (one block, a sender with code)',
-    why(out).some((w) => w.startsWith('tier B (eth_call with a code override)')) && why(out).some((w) => /tx.origin with code/.test(w))
+    why(out).includes('tier B: no later sell (one block)') && why(out).includes('tier B: tx.origin has code (the injected probe)')
     && !why(out).some((w) => w.startsWith('tier C')), JSON.stringify(why(out)));
+  check('tierB: uncovered and limits are the SDK report\'s, in the fields and in notMeasured (one producer)',
+    JSON.stringify(out.uncovered) === JSON.stringify(['a6', 'a8', 'b2', 'e1', 'i3'])
+    && JSON.stringify(out.limits) === JSON.stringify(['tx.origin has code (the injected probe)', 'no later sell (one block)', 'block number/time = pinned block B, not B+1'])
+    && why(out).includes('classes not covered at tier B: a6, a8, b2, e1, i3')
+    && out.limits.every((l) => why(out).includes(`tier B: ${l}`)), JSON.stringify([out.uncovered, out.limits]));
 }
 {
   const out = await xrayToken(async (batch) => batch.map(() => ({ httpStatus: 429, body: 'Too Many Requests' })), input);
@@ -207,7 +215,7 @@ const e2e = async (name) => {
 {
   const { text, out, misses: m } = await e2e('tierB');
   check('e2e tierB: a node that refuses eth_simulateV1 (-32601 over HTTP) is measured on tier B',
-    m === 0 && out.verdict === 'MEASURED' && out.tier === 'B' && why(out).some((w) => w.startsWith('tier B (')), `${m} ${text.slice(0, 300)}`);
+    m === 0 && out.verdict === 'MEASURED' && out.tier === 'B' && why(out).includes('tier B: no later sell (one block)'), `${m} ${text.slice(0, 300)}`);
 }
 {
   const { text, out, misses: m } = await e2e('probe429');
