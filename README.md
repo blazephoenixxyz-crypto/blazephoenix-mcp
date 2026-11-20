@@ -82,6 +82,7 @@ The server never prints your URLs, since they may carry a key.
 | `get_token_info` | Symbol, decimals and name of a token, read from the chain. |
 | `get_deployments` | The versioned deployment registry: Core, Hub, Solver, Quoter and Router per chain and version. |
 | `verify_deployment` | Check that the registry addresses for a chain and version match what is deployed on-chain. |
+| `xray_token` | Measure a token through your RPC (`eth_simulateV1` or `eth_call`, on a pinned block): buy, sell, wallet transfer and transfer to the pair from a fresh address, with the taxes in bps, the block, the tier, the classes that tier does not cover (`uncovered`), its `limits` and what was not measured. Verdict `CONDEMN / WARN / NOT_MEASURED / MEASURED` against your `maxTaxBps`; `MEASURED` covers only what was measured. |
 
 Every tool is read-only. **The server never signs and never holds a key.**
 `build_swap` returns calldata for you to review and sign in your own wallet, and

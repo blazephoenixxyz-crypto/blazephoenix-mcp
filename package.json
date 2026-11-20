@@ -1,6 +1,6 @@
 {
   "name": "@blazephoenix/mcp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "mcpName": "xyz.blazephoenix/mcp",
   "description": "Local MCP server for BlazePhoenix: quotes, unsigned calldata and simulation, all read through your own RPC. It never signs and never holds keys.",
   "type": "module",
@@ -20,13 +20,13 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test.mjs && node scripts/test-properties.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-properties.mjs && node scripts/test-xray.mjs",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@blazephoenix/sdk": "^1.4.0",
+    "@blazephoenix/sdk": "1.6.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
-    "viem": "^2.21.40",
+    "viem": "^2.57.12",
     "zod": "^3.25.0"
   },
   "devDependencies": {
