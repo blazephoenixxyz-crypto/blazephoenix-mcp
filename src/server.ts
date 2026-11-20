@@ -20,7 +20,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv, resolveChain } from '@blazephoenix/sdk';
 import { scrubUrls, stringify, tokenText } from './text.js';
-import { transportOver, xrayToken } from './xray.js';
+import { failedTransport, transportOver, xrayToken } from './xray.js';
+import type { Transport } from '@blazephoenix/sdk/xray';
 
 const VERSION = '1.3.0';
 
@@ -266,7 +267,8 @@ async function main() {
         + 'MEASURED (nothing failed among what was measured, under the stated conditions). notMeasured lists what was not measured and why: '
         + 'the limits of the tier the node allowed (A eth_simulateV1, sell in a later block; B eth_call with a code override, one block, '
         + 'a sender with code; C plain eth_call, Multicall3 as the caller), other amounts, your own address, and future owner actions '
-        + '(blacklist, fee change, pause, upgrade, liquidity withdrawal), which no simulation reaches.',
+        + '(blacklist, fee change, pause, upgrade, liquidity withdrawal), which no simulation reaches. It measures through the BlazePhoenix '
+        + '1.0.0 Router and Quoter on every chain; the BLAZEPHOENIX_VERSION pin does not apply to it.',
       inputSchema: strict({
         chain: z.union([z.string(), z.number()]).describe('base | eth | arbitrum, or a numeric chain id'),
         token: address.describe('the token to measure (0x address)'),
@@ -277,8 +279,15 @@ async function main() {
     },
     async (a) => run(async () => {
       const chainId = resolveChain(a.chain);
-      const node = await client.rpc.client(chainId);
-      const transport = transportOver((req) => node.request({ method: req.method, params: req.params } as never));
+      let transport: Transport;
+      try {
+        const node = await client.rpc.client(chainId);
+        transport = transportOver((req) => node.request({ method: req.method, params: req.params } as never));
+      } catch (e) {
+        // The node failed its check (rpc_error): the X-Ray reports that as NOT_MEASURED. Configuration errors stay tool errors.
+        if ((e as { code?: unknown }).code !== 'rpc_error') throw e;
+        transport = failedTransport((e as Error).cause);
+      }
       return xrayToken(transport, { chainId, token: a.token, amountIn: BigInt(a.amountIn), maxTaxBps: a.maxTaxBps });
     }),
   );

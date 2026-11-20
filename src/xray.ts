@@ -38,10 +38,18 @@ export function transportOver(request: (req: Rpc) => Promise<unknown>): Transpor
     request(req).then((result): Reply => ({ jsonrpc: '2.0', id: 1, result }), replyOf)));
 }
 
-/** No simulation reaches these, on any tier. */
+/** A node that failed before the run (its first eth_chainId, for example a 429): every request of the
+ *  run gets that failure as its reply, so the SDK classifies it (provider unavailable: NOT_MEASURED). */
+export function failedTransport(err: unknown): Transport {
+  const reply = replyOf(err);
+  return async (batch) => batch.map(() => reply);
+}
+
+/** No simulation reaches these, on any tier, and the deployment the X-Ray measures through. */
 const NEVER = [
   'future owner actions (a blacklist after the purchase, a fee change, a pause, an upgrade, a liquidity withdrawal) cannot be simulated',
   'other amounts than amountIn, other blocks than the pinned one, and your own address were not measured',
+  'the X-Ray buys and sells through the BlazePhoenix 1.0.0 Router and Quoter on every chain; other deployments were not measured, and the BLAZEPHOENIX_VERSION pin does not apply to xray_token',
 ];
 
 const MEANING: Record<ShownVerdict, string> = {

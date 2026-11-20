@@ -13,7 +13,7 @@
 // in the SDK (src/xray/tiers.ts) at the version the fixture was recorded with.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { HttpRequestError, MethodNotFoundRpcError, RpcRequestError } from 'viem';
+import { createPublicClient, http, HttpRequestError, MethodNotFoundRpcError, RpcRequestError } from 'viem';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -151,6 +151,10 @@ console.log('xray: replayed scenarios (pure)');
     out.verdict === 'NOT_MEASURED' && out.sdkVerdict === null && out.block === null && out.instruments.length === 0
     && out.notMeasured[0]?.what === 'everything', JSON.stringify(out).slice(0, 300));
   check('every request rate-limited: no word of safety in the output', !NOT_SAID.test(JSON.stringify(out)));
+  const { out: h } = await run('happy300');
+  const v1 = (o) => (o.notMeasured ?? []).some((n) => n.what === 'any tier' && /1\.0\.0/.test(n.why) && /BLAZEPHOENIX_VERSION/.test(n.why));
+  check('the report states the 1.0.0 deployment it measured and that BLAZEPHOENIX_VERSION does not apply (measured and not measured runs)',
+    v1(h) && v1(out), JSON.stringify(h.notMeasured).slice(0, 300));
   let code = '';
   try { await xrayToken(async (b) => b.map(() => ({ transportError: 'x' })), { ...input, amountIn: 0n }); } catch (e) { code = e.code; }
   check('an input the SDK refuses comes back as bad_request', code === 'bad_request', code);
@@ -189,6 +193,8 @@ const xt = tools.find((t) => t.name === 'xray_token');
 check('xray_token is listed and read-only', xt?.annotations?.readOnlyHint === true, JSON.stringify(xt?.annotations));
 check('xray_token: maxTaxBps is required (the number is the caller\'s)', (xt?.inputSchema?.required ?? []).includes('maxTaxBps'), JSON.stringify(xt?.inputSchema?.required));
 check('xray_token: no word of safety in its description', xt !== undefined && !NOT_SAID.test(JSON.stringify(xt)), xt?.description);
+check('xray_token: its description states the 1.0.0 deployment it measures and that BLAZEPHOENIX_VERSION does not apply',
+  /1\.0\.0/.test(xt?.description ?? '') && /BLAZEPHOENIX_VERSION/.test(xt?.description ?? ''), xt?.description);
 const xargs = { chain: 'base', token: fx.input.token, amountIn: fx.input.amountIn, maxTaxBps: fx.input.maxTaxBps };
 const noRpc = await bare.callTool({ name: 'xray_token', arguments: xargs });
 let noRpcCode = '';
@@ -214,13 +220,15 @@ const node = createServer((req, res) => {
   req.on('end', () => {
     const q = JSON.parse(body);
     const one = (r) => {
-      const rep = scenario === '429' ? (r.method === 'eth_chainId' ? { result: '0x2105' } : { httpStatus: 429, body: 'Too Many Requests' })
+      const rep = scenario === '429all' ? { httpStatus: 429, body: 'Too Many Requests' }
+        : scenario === '400' ? { httpStatus: 400, body: { jsonrpc: '2.0', id: r.id, error: { code: -32601, message: `the method ${r.method} does not exist` } } }
+        : scenario === '429' ? (r.method === 'eth_chainId' ? { result: '0x2105' } : { httpStatus: 429, body: 'Too Many Requests' })
         : scenario.lookup(r) ?? (r.method === 'eth_chainId' ? { result: '0x2105' } : (misses++, { error: { code: -32000, message: 'not in the transcript' } }));
       return rep;
     };
     const reps = (Array.isArray(q) ? q : [q]).map((r) => [r, one(r)]);
     const http = reps.find(([, rep]) => rep.httpStatus);
-    if (http) { res.writeHead(http[1].httpStatus, { 'content-type': 'text/plain' }); res.end(typeof http[1].body === 'string' ? http[1].body : JSON.stringify(http[1].body ?? '')); return; }
+    if (http) { res.writeHead(http[1].httpStatus, { 'content-type': typeof http[1].body === 'string' ? 'text/plain' : 'application/json' }); res.end(typeof http[1].body === 'string' ? http[1].body : JSON.stringify(http[1].body ?? '')); return; }
     const wire = reps.map(([r, rep]) => ('result' in rep ? { jsonrpc: '2.0', id: r.id, result: rep.result } : { jsonrpc: '2.0', id: r.id, error: rep.error }));
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify(Array.isArray(q) ? wire : wire[0]));
@@ -272,6 +280,29 @@ const e2e = async (name) => {
   check('e2e: a node answering 429 to everything is NOT_MEASURED, not an error and not a verdict on the token',
     r.isError !== true && out.verdict === 'NOT_MEASURED' && out.sdkVerdict === null, text.slice(0, 300));
   check('e2e 429: no word of safety and no node URL in the output', text !== '' && !NOT_SAID.test(text) && !text.includes('127.0.0.1'), text.slice(0, 300));
+}
+{
+  // viem must hand the node's JSON-RPC error on an HTTP 4xx to replyOf (viem >= 2.57.12), or -32601 is lost and no tier steps down.
+  scenario = '400';
+  let err;
+  try { await createPublicClient({ transport: http(`http://127.0.0.1:${node.address().port}`, { retryCount: 0 }) }).request({ method: 'eth_simulateV1', params: [] }); } catch (e) { err = e; }
+  const rep = err === undefined ? null : replyOf(err);
+  check('HTTP 400 with a JSON-RPC -32601 body over viem http: replyOf keeps the status and the -32601 code',
+    rep?.httpStatus === 400 && rep?.body?.error?.code === -32601, JSON.stringify(rep));
+}
+{
+  // A fresh server: its first eth_chainId (the router's check of the node) is rate-limited as well.
+  scenario = '429all';
+  const cold = new Client({ name: 'bp-mcp-xray-cold', version: '0.0.0' });
+  await cold.connect(new StdioClientTransport({ command: process.execPath, args: [server], env: { PATH: process.env.PATH ?? '', BLAZEPHOENIX_RPC_BASE: `http://127.0.0.1:${node.address().port}` } }));
+  const r = await cold.callTool({ name: 'xray_token', arguments: xargs });
+  const text = r.content?.[0]?.text ?? '';
+  let out = {};
+  try { out = JSON.parse(text).result ?? {}; } catch { /* not JSON */ }
+  check('e2e: a 429 on the first eth_chainId (the node check) is NOT_MEASURED, not a tool error',
+    r.isError !== true && out.verdict === 'NOT_MEASURED' && out.sdkVerdict === null, text.slice(0, 300));
+  check('e2e 429 on the node check: no word of safety and no node URL in the output', text !== '' && !NOT_SAID.test(text) && !text.includes('127.0.0.1'), text.slice(0, 300));
+  await cold.close();
 }
 await live.close();
 node.close();
