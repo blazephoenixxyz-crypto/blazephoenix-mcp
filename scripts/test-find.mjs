@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { findTokenTool, present, NO_CHOICE } = await import(join(here, '..', 'dist', 'find.js'));
+const { findTokenTool, present, NO_CHOICE, CENTRALIZED } = await import(join(here, '..', 'dist', 'find.js'));
 const { stringify } = await import(join(here, '..', 'dist', 'text.js'));
 const { WARNINGS } = await import('@blazephoenix/sdk/find');
 
@@ -72,7 +72,16 @@ console.log('find_token (module, fake chain and indexes)');
 const ix = indexes();
 // A rejection becomes an empty answer, so a mutant fails the checks below instead of crashing the file.
 const failedCall = (e) => ({ error: String(e), candidates: [], warnings: [] });
-const out = await findTokenTool({ query: 'PEPE', chainId: 8453 }, { reader, fetch: ix.f }).catch(failedCall);
+// Sources. The default is on-chain discovery, not available yet: it reads nothing and says how to opt in.
+const ix0 = indexes();
+const dflt = await findTokenTool({ query: 'PEPE', chainId: 8453 }, { reader, fetch: ix0.f }).then(() => ({}), (e) => e);
+// mutants: resolveSources defaults to 'centralized'; findTokenTool's sources guard is removed; ONCHAIN_PENDING loses
+// "is coming" or the `sources: "centralized"` hint
+check('by default (on-chain) no index is called and the answer says on-chain discovery is coming and how to opt in',
+  dflt.code === 'onchain_discovery_unavailable' && ix0.urls.length === 0 && /is coming/.test(dflt.message ?? '')
+  && /Pass sources: "centralized"/.test(dflt.message ?? ''), JSON.stringify({ code: dflt.code, message: dflt.message, urls: ix0.urls }));
+
+const out = await findTokenTool({ query: 'PEPE', chainId: 8453, sources: 'centralized' }, { reader, fetch: ix.f }).catch(failedCall);
 const byAddr = Object.fromEntries(out.candidates.map((c) => [c.address.toLowerCase(), c]));
 const text = stringify({ ok: true, result: out });
 
@@ -97,6 +106,10 @@ check('the fixed warnings, verbatim: most liquid not official, N tokens use this
 check('no candidate is chosen: the answer says so, and carries no chosen address',
   out.choice === NO_CHOICE && /none is selected for a swap/.test(out.choice)
   && !Object.keys(out).some((k) => /^(selected|chosen|token|address|best)$/i.test(k)), JSON.stringify(Object.keys(out)));
+// mutant: present drops `candidateSource: CENTRALIZED`
+check('the answer labels its candidates as proposed by centralized indexes, opted into',
+  out.candidateSource === CENTRALIZED && /^centralized: CoinGecko and Dexscreener search/.test(out.candidateSource ?? '')
+  && /sources: "centralized"/.test(out.candidateSource ?? ''), String(out.candidateSource));
 // mutant: keepsLabel's label becomes 'official'
 check('"official" appears only as the denial in the warning',
   (text.match(/official/gi) ?? []).length === 1 && text.includes('It is not \\"official\\"'), text.match(/.{40}official.{20}/gi)?.join(' | '));
@@ -113,7 +126,7 @@ check('amounts reach the agent as exact decimal strings',
 
 console.log('find_token (an index that fails)');
 const ix2 = indexes({ down: true });
-const out2 = await findTokenTool({ query: 'PEPE', chainId: 8453 }, { reader, fetch: ix2.f }).catch(failedCall);
+const out2 = await findTokenTool({ query: 'PEPE', chainId: 8453, sources: 'centralized' }, { reader, fetch: ix2.f }).catch(failedCall);
 // mutant: present drops `sources`
 check('a failing index is listed as failed, and the other still proposes',
   out2.sources?.some((s) => s.name === 'dexscreener' && s.ok === false) && out2.sources?.some((s) => s.name === 'coingecko' && s.ok === true)
@@ -140,6 +153,19 @@ const desc = t?.description ?? '';
 check('the description carries the fixed warnings and the no-choice rule',
   /"most liquid", never "official"/.test(desc) && /impostors copy tickers/.test(desc) && /liquidity is not safety/.test(desc)
   && /never selects one\s+for a swap/.test(desc), desc);
+// mutant: the description loses "explicit opt-in" or "centralized indexes", or says "onchain" is not the default
+check('the description says on-chain is the default and the centralized indexes are an explicit opt-in',
+  /"onchain" \(the default/.test(desc) && /explicit opt-in/.test(desc) && /centralized indexes/.test(desc), desc);
+// mutant: the handler's early `sources === 'onchain'` return is removed (the missing RPC then answers first)
+const dfltSrv = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'PEPE' } });
+const dfltText = dfltSrv.content?.[0]?.text ?? '';
+check('by default, even with no RPC configured: onchain_discovery_unavailable, no candidates',
+  dfltSrv.isError === true && /onchain_discovery_unavailable/.test(dfltText) && !/candidates"/.test(dfltText), dfltText.slice(0, 200));
+// mutant: `sources: z.enum(SOURCES)` becomes `z.string()` (an unknown value then reaches the handler as on-chain)
+const badSrc = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'PEPE', sources: 'everything' } });
+check('an unknown sources value is refused by the schema', badSrc.isError === true && /onchain/.test(JSON.stringify(badSrc.content))
+  && /centralized/.test(JSON.stringify(badSrc.content)) && !/onchain_discovery_unavailable/.test(JSON.stringify(badSrc.content)),
+  JSON.stringify(badSrc.content).slice(0, 200));
 // mutant: inputSchema `strict({...})` becomes `z.object({...})` (an rpc key would be dropped silently)
 const withRpc = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'PEPE', rpc: 'https://example.invalid' } });
 check('an rpc argument is refused by the schema: the RPC comes from the environment only',
@@ -148,10 +174,10 @@ check('an rpc argument is refused by the schema: the RPC comes from the environm
 const long = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'P'.repeat(65) } });
 check('a query over 64 characters is refused by the schema', long.isError === true && /64/.test(JSON.stringify(long.content)), JSON.stringify(long.content).slice(0, 200));
 // mutant: the handler passes `rpc: undefined` and no client (the SDK refuses with bad_request, not the router's rpc error)
-const noRpc = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'PEPE' } });
+const noRpc = await client.callTool({ name: 'find_token', arguments: { chain: 'base', query: 'PEPE', sources: 'centralized' } });
 const noRpcText = noRpc.content?.[0]?.text ?? '';
 check('with no RPC configured: an error envelope, no candidates', noRpc.isError === true && /"ok": false/.test(noRpcText)
-  && !/candidates/.test(noRpcText) && !/bad_request/.test(noRpcText), noRpcText.slice(0, 200));
+  && !/candidates/.test(noRpcText) && !/bad_request/.test(noRpcText) && !/onchain_discovery_unavailable/.test(noRpcText), noRpcText.slice(0, 200));
 await client.close();
 
 console.log(`find: ${passed} passed, ${failed} failed`);

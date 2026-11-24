@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv, resolveChain } from '@blazephoenix/sdk';
 import { scrubUrls, stringify, tokenText } from './text.js';
 import { failedTransport, transportOver, xrayToken } from './xray.js';
-import { findTokenTool } from './find.js';
+import { findTokenTool, onchainDiscovery, resolveSources, SOURCES } from './find.js';
 import type { Transport } from '@blazephoenix/sdk/xray';
 
 const VERSION = '1.3.0';
@@ -298,8 +298,9 @@ async function main() {
     {
       title: 'Find a token by name or ticker',
       description:
-        'Candidates for a name or ticker on one chain. Two third-party indexes (CoinGecko, Dexscreener search) only propose '
-        + 'addresses; everything else is read through YOUR RPC: code at the address, symbol, name and decimals, a warning when the '
+        'Candidates for a name or ticker on one chain. `sources` picks where candidates come from: "onchain" (the default; not '
+        + 'available yet, answers onchain_discovery_unavailable) or "centralized", an explicit opt-in in which two third-party, '
+        + 'centralized indexes (CoinGecko, Dexscreener search) only propose addresses, labelled in candidateSource; everything else is read through YOUR RPC: code at the address, symbol, name and decimals, a warning when the '
         + 'symbol or name copies another with look-alike letters, the depth the BlazePhoenix Quoter measures (sells up to N before '
         + '1% / 5% price impact, a lower bound) and the liquidity the venues hold, with what was NOT_MEASURED and why. Candidates '
         + 'are ranked by measured depth: the first is "most liquid", never "official". It never chooses one and never selects one '
@@ -308,13 +309,18 @@ async function main() {
       inputSchema: strict({
         chain: z.union([z.string(), z.number()]).describe('base | eth | optimism | arbitrum, or a numeric chain id'),
         query: z.string().min(1).max(64).describe('a name or ticker, for example PEPE'),
+        sources: z.enum(SOURCES).optional()
+          .describe('onchain (default, not available yet) | centralized (CoinGecko and Dexscreener search, third-party indexes)'),
       }),
       annotations: { ...readOnly, title: 'Find a token by name or ticker' },
     },
     async (a) => run(async () => {
       const chainId = resolveChain(a.chain);
+      const sources = resolveSources(a.sources);
+      // Before any RPC: the on-chain answer does not depend on a node being configured.
+      if (sources === 'onchain') return onchainDiscovery({ query: a.query, chainId });
       const node = await client.rpc.client(chainId);
-      return findTokenTool({ query: a.query, chainId }, { rpc: { request: (r) => node.request(r as never) }, client });
+      return findTokenTool({ query: a.query, chainId, sources }, { rpc: { request: (r) => node.request(r as never) }, client });
     }),
   );
 

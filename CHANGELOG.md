@@ -10,6 +10,10 @@
   depth keeps the label "most liquid", never "official". No candidate is chosen or selected for a
   swap, and the fixed warnings ("N tokens use this ticker; impostors copy tickers; do your own
   research", "liquidity is not safety") come verbatim. A failing index is listed by name.
+- `find_token` `sources`: `"onchain"` by default (on-chain discovery, not available yet: it answers
+  `onchain_discovery_unavailable`, reads nothing and says how to opt in); the CoinGecko and Dexscreener
+  indexes only with `sources: "centralized"`, labelled as centralized in `candidateSource`. An unknown
+  value is refused by the schema.
 - `@blazephoenix/sdk` ^1.8.0.
 
 ## 1.3.0
