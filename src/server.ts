@@ -303,7 +303,7 @@ async function main() {
         + 'centralized indexes (CoinGecko, Dexscreener search) only propose addresses, labelled in candidateSource; everything else is read through YOUR RPC: code at the address, symbol, name and decimals, a warning when the '
         + 'symbol or name copies another with look-alike letters, the depth the BlazePhoenix Quoter measures (sells up to N before '
         + '1% / 5% price impact, a lower bound) and the liquidity the venues hold, with what was NOT_MEASURED and why. Candidates '
-        + 'are ranked by measured depth: the first is "most liquid", never "official". It never chooses one and never selects one '
+        + 'are ranked by measured depth: the first is labelled "most liquid" only when its depth is MEASURED (no label when it is NOT_MEASURED), never "official". It never chooses one and never selects one '
         + 'for a swap: N tokens use a ticker, impostors copy tickers, and liquidity is not safety (it can be withdrawn). To swap, '
         + 'pass the 0x address you verified; xray_token measures one candidate.',
       inputSchema: strict({

@@ -57,6 +57,6 @@ export function present(r: FindTokenResult) {
 
 export async function findTokenTool(a: FindArgs, d: FindDeps) {
   if (resolveSources(a.sources) !== 'centralized') return onchainDiscovery(a);
-  const r = await findToken({ query: a.query, chainId: a.chainId, rpc: d.rpc, client: d.client, reader: d.reader, fetch: d.fetch });
+  const r = await findToken({ query: a.query, chainId: a.chainId, sources: 'centralized', rpc: d.rpc, client: d.client, reader: d.reader, fetch: d.fetch });
   return present(r);
 }

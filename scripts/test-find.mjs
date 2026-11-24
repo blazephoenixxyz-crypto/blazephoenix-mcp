@@ -64,7 +64,7 @@ const reader = {
   usdValue: async (token, amountIn) => {
     const lin = amountIn / 10n ** 12n;
     const usd = token.toLowerCase() === B.toLowerCase() ? (lin * 20_000_000_000n) / (lin + 20_000_000_000n) : lin;
-    return { chainId: 8453, version: '1', label: 'USD (via USDC)', dollarToken: USDC, dollarDecimals: 6, token, amountIn, usdValue: usd, blockNumber: null, blockHash: null, vias: [] };
+    return { chainId: 8453, version: '1', label: 'USD (via USDC)', dollarToken: USDC, dollarDecimals: 6, token, amountIn, usdValue: usd, blockNumber: 1n, blockHash: '0x' + '11'.repeat(32), vias: [] };
   },
 };
 
@@ -85,6 +85,7 @@ const out = await findTokenTool({ query: 'PEPE', chainId: 8453, sources: 'centra
 const byAddr = Object.fromEntries(out.candidates.map((c) => [c.address.toLowerCase(), c]));
 const text = stringify({ ok: true, result: out });
 
+// mutant: findTokenTool drops `sources: 'centralized'` (the SDK defaults to on-chain and refuses without an rpc)
 // mutant: findTokenTool drops `fetch: d.fetch` (the SDK falls back to globalThis.fetch, which throws)
 check('the injected indexes are the only ones called, and only their own URLs',
   escaped === 0 && ix.urls.length === 4 && ix.urls.every((u) => /^https:\/\/api\.(coingecko|dexscreener)\.com\//.test(u)), JSON.stringify(ix.urls));
@@ -151,7 +152,7 @@ const t = tools.find((x) => x.name === 'find_token');
 const desc = t?.description ?? '';
 // mutant: the description loses any one of these phrases
 check('the description carries the fixed warnings and the no-choice rule',
-  /"most liquid", never "official"/.test(desc) && /impostors copy tickers/.test(desc) && /liquidity is not safety/.test(desc)
+  /labelled "most liquid" only when its depth is MEASURED \(no label when it is NOT_MEASURED\), never "official"/.test(desc) && /impostors copy tickers/.test(desc) && /liquidity is not safety/.test(desc)
   && /never selects one\s+for a swap/.test(desc), desc);
 // mutant: the description loses "explicit opt-in" or "centralized indexes", or says "onchain" is not the default
 check('the description says on-chain is the default and the centralized indexes are an explicit opt-in',
