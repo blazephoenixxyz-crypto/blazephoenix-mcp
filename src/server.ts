@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { BlazePhoenix, rpcFromEnv, resolveChain } from '@blazephoenix/sdk';
 import { scrubUrls, stringify, tokenText } from './text.js';
 import { failedTransport, transportOver, xrayToken } from './xray.js';
+import { findTokenTool } from './find.js';
 import type { Transport } from '@blazephoenix/sdk/xray';
 
 const VERSION = '1.3.0';
@@ -289,6 +290,31 @@ async function main() {
         transport = failedTransport((e as Error).cause);
       }
       return xrayToken(transport, { chainId, token: a.token, amountIn: BigInt(a.amountIn), maxTaxBps: a.maxTaxBps });
+    }),
+  );
+
+  server.registerTool(
+    'find_token',
+    {
+      title: 'Find a token by name or ticker',
+      description:
+        'Candidates for a name or ticker on one chain. Two third-party indexes (CoinGecko, Dexscreener search) only propose '
+        + 'addresses; everything else is read through YOUR RPC: code at the address, symbol, name and decimals, a warning when the '
+        + 'symbol or name copies another with look-alike letters, the depth the BlazePhoenix Quoter measures (sells up to N before '
+        + '1% / 5% price impact, a lower bound) and the liquidity the venues hold, with what was NOT_MEASURED and why. Candidates '
+        + 'are ranked by measured depth: the first is "most liquid", never "official". It never chooses one and never selects one '
+        + 'for a swap: N tokens use a ticker, impostors copy tickers, and liquidity is not safety (it can be withdrawn). To swap, '
+        + 'pass the 0x address you verified; xray_token measures one candidate.',
+      inputSchema: strict({
+        chain: z.union([z.string(), z.number()]).describe('base | eth | optimism | arbitrum, or a numeric chain id'),
+        query: z.string().min(1).max(64).describe('a name or ticker, for example PEPE'),
+      }),
+      annotations: { ...readOnly, title: 'Find a token by name or ticker' },
+    },
+    async (a) => run(async () => {
+      const chainId = resolveChain(a.chain);
+      const node = await client.rpc.client(chainId);
+      return findTokenTool({ query: a.query, chainId }, { rpc: { request: (r) => node.request(r as never) }, client });
     }),
   );
 

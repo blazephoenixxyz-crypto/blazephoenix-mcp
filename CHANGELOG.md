@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- `find_token`: candidates for a name or ticker on one chain, from `findToken` of
+  `@blazephoenix/sdk/find` (1.8.0), read through your own RPC. Two third-party indexes (CoinGecko,
+  Dexscreener search) only propose addresses; code, symbol, name, decimals, the look-alike warning,
+  the depth the Quoter measures and the venue liquidity are read on your node, with what was
+  `NOT_MEASURED` and why. Candidates are ranked by measured depth; only rank 1 with a `MEASURED`
+  depth keeps the label "most liquid", never "official". No candidate is chosen or selected for a
+  swap, and the fixed warnings ("N tokens use this ticker; impostors copy tickers; do your own
+  research", "liquidity is not safety") come verbatim. A failing index is listed by name.
+- `@blazephoenix/sdk` ^1.8.0.
+
 ## 1.3.0
 
 - `xray_token`: the token X-Ray of `@blazephoenix/sdk/xray` (1.6.0), run through your own RPC on a
