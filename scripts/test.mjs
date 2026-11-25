@@ -27,8 +27,8 @@ await client.connect(transport);
 console.log('tools');
 const { tools } = await client.listTools();
 const names = tools.map((t) => t.name).sort();
-check('exactly the eight read-only tools',
-  JSON.stringify(names) === JSON.stringify(['build_swap', 'check_solvency', 'get_deployments', 'get_quote', 'get_token_info', 'simulate_swap', 'verify_deployment', 'xray_token']),
+check('exactly the nine read-only tools',
+  JSON.stringify(names) === JSON.stringify(['build_swap', 'check_solvency', 'find_token', 'get_deployments', 'get_quote', 'get_token_info', 'simulate_swap', 'verify_deployment', 'xray_token']),
   JSON.stringify(names));
 check('every tool is marked read-only', tools.every((t) => t.annotations?.readOnlyHint === true));
 check('no tool takes an rpc, url, key or private key argument',

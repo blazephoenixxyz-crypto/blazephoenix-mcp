@@ -20,11 +20,11 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test.mjs && node scripts/test-properties.mjs && node scripts/test-xray.mjs",
+    "test": "node scripts/test.mjs && node scripts/test-properties.mjs && node scripts/test-xray.mjs && node scripts/test-find.mjs",
     "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
-    "@blazephoenix/sdk": "1.6.0",
+    "@blazephoenix/sdk": "^1.8.1",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "viem": "^2.57.12",
     "zod": "^3.25.0"
