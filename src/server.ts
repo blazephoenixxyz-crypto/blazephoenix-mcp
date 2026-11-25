@@ -24,7 +24,7 @@ import { failedTransport, transportOver, xrayToken } from './xray.js';
 import { findTokenTool, onchainDiscovery, resolveSources, SOURCES } from './find.js';
 import type { Transport } from '@blazephoenix/sdk/xray';
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 
 const address = z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'expected a 0x address (40 hex characters)');
 const chain = z

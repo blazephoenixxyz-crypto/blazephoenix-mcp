@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - `find_token`: candidates for a name or ticker on one chain, from `findToken` of
   `@blazephoenix/sdk/find` (1.8.1), read through your own RPC. Two third-party indexes (CoinGecko,
