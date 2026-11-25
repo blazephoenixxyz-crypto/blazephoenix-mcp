@@ -305,7 +305,8 @@ async function main() {
         + '1% / 5% price impact, a lower bound) and the liquidity the venues hold, with what was NOT_MEASURED and why. Candidates '
         + 'are ranked by measured depth: the first is labelled "most liquid" only when its depth is MEASURED (no label when it is NOT_MEASURED), never "official". It never chooses one and never selects one '
         + 'for a swap: N tokens use a ticker, impostors copy tickers, and liquidity is not safety (it can be withdrawn). To swap, '
-        + 'pass the 0x address you verified; xray_token measures one candidate.',
+        + 'pass the 0x address you verified; xray_token measures one candidate. Proposed addresses past the read limit are not read '
+        + 'but named: omittedAddresses lists them and omittedNotMeasured those with no complete measure (absent is not zero).',
       inputSchema: strict({
         chain: z.union([z.string(), z.number()]).describe('base | eth | optimism | arbitrum, or a numeric chain id'),
         query: z.string().min(1).max(64).describe('a name or ticker, for example PEPE'),

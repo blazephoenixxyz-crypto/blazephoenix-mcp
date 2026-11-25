@@ -51,6 +51,10 @@ export function present(r: FindTokenResult) {
     }),
     sources: r.sources,
     omitted: r.omitted,
+    // The addresses past maxCandidates, named rather than dropped: absent is not zero, and the ones with no
+    // complete pre-filter measure are listed apart (nothing measured says they are shallow).
+    omittedAddresses: r.omittedAddresses,
+    omittedNotMeasured: r.omittedNotMeasured,
     basis: r.basis,
   };
 }

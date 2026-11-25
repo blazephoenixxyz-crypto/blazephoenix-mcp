@@ -14,6 +14,9 @@
   `onchain_discovery_unavailable`, reads nothing and says how to opt in); the CoinGecko and Dexscreener
   indexes only with `sources: "centralized"`, labelled as centralized in `candidateSource`. An unknown
   value is refused by the schema.
+- `find_token` `omittedAddresses` and `omittedNotMeasured`: the proposed addresses past the read
+  limit are named (queue order) instead of only counted in `omitted`, and those with no complete
+  pre-filter measure are listed apart, with the SDK's omitted warning; absent is not zero.
 - `@blazephoenix/sdk` ^1.8.0.
 
 ## 1.3.0

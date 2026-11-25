@@ -133,9 +133,38 @@ check('a failing index is listed as failed, and the other still proposes',
   out2.sources?.some((s) => s.name === 'dexscreener' && s.ok === false) && out2.sources?.some((s) => s.name === 'coingecko' && s.ok === true)
   && out2.candidates.length === 2, JSON.stringify(out2.sources));
 
+console.log('find_token (more proposals than are read: the omitted addresses are named)');
+// 13 addresses proposed for one ticker on Base; the SDK reads 10 (DEFAULT_MAX_CANDIDATES) and names the rest.
+const FLOOD = Array.from({ length: 13 }, (_, i) => '0x' + (0xe000 + i).toString(16).padStart(40, '0'));
+const floodIx = async (input) => {
+  const u = String(input);
+  if (u.startsWith('https://api.coingecko.com/api/v3/search?')) return json({ coins: [] });
+  if (u.startsWith('https://api.dexscreener.com/latest/dex/search?')) return json({ pairs: FLOOD.map((a) => (
+    { chainId: 'base', baseToken: { address: a, symbol: 'PEPE', name: 'Pepe' }, quoteToken: { address: USDC, symbol: 'USDC', name: 'USD Coin' } })) });
+  throw new Error(`unexpected URL ${u}`);
+};
+const floodReader = { ...reader, hasCode: async () => true, erc20: async () => ({ symbol: 'PEPE', name: 'Pepe', decimals: 18 }) };
+const out3 = await findTokenTool({ query: 'PEPE', chainId: 8453, sources: 'centralized' }, { reader: floodReader, fetch: floodIx }).catch(failedCall);
+const read3 = new Set(out3.candidates.map((c) => c.address.toLowerCase()));
+const left3 = FLOOD.filter((a) => !read3.has(a));
+// Mutant: present drops `omittedAddresses` (the agent learns only a count, not which addresses were left out)
+check('every proposed address that was not read is named in omittedAddresses, and only those',
+  out3.candidates.length === 10 && out3.omitted === 3 && Array.isArray(out3.omittedAddresses) && out3.omittedAddresses.length === 3
+  && left3.every((a) => out3.omittedAddresses.some((o) => o.toLowerCase() === a)), JSON.stringify({ omitted: out3.omitted, omittedAddresses: out3.omittedAddresses }));
+// Mutant: present drops `omittedNotMeasured` (an index proposal has no pre-filter measure, so all three are listed)
+check('omitted addresses with no measure are named in omittedNotMeasured',
+  Array.isArray(out3.omittedNotMeasured) && out3.omittedNotMeasured.length === 3
+  && out3.omittedNotMeasured.every((a) => out3.omittedAddresses.includes(a)), JSON.stringify(out3.omittedNotMeasured));
+// Mutant: present returns `warnings: r.warnings.slice(0, -1)` (the omitted warning is the last one the SDK pushes here)
+check('the omitted warning reaches the agent verbatim', out3.warnings.includes(WARNINGS.omitted(3, 3)), JSON.stringify(out3.warnings));
+
 console.log('present (a second check on the label)');
 const base = (rank, status, label) => ({ address: A, rank, label, depth: { status } });
-const crafted = (cands) => present({ query: 'X', chainId: 8453, candidates: cands, sources: [], omitted: 0, warnings: [], basis: '' });
+const crafted = (cands) => present({ query: 'X', chainId: 8453, candidates: cands, sources: [], omitted: 0, omittedAddresses: [], omittedNotMeasured: [], warnings: [], basis: '' });
+// Mutant: present returns `omittedNotMeasured: r.omittedAddresses` (or swaps the two lists)
+const om = present({ query: 'X', chainId: 8453, candidates: [], sources: [], omitted: 2, omittedAddresses: [B, A], omittedNotMeasured: [A], warnings: [], basis: '' });
+check('omittedAddresses and omittedNotMeasured pass through as the SDK gives them, in queue order',
+  JSON.stringify(om.omittedAddresses) === JSON.stringify([B, A]) && JSON.stringify(om.omittedNotMeasured) === JSON.stringify([A]), JSON.stringify(om));
 // mutant: keepsLabel without `c.rank === 1 &&`
 check('a label on rank 2 is taken away', !('label' in crafted([base(1, 'MEASURED'), base(2, 'MEASURED', 'most liquid')]).candidates[1]));
 // mutant: keepsLabel without `&& c.depth.status === 'MEASURED'`
@@ -154,6 +183,9 @@ const desc = t?.description ?? '';
 check('the description carries the fixed warnings and the no-choice rule',
   /labelled "most liquid" only when its depth is MEASURED \(no label when it is NOT_MEASURED\), never "official"/.test(desc) && /impostors copy tickers/.test(desc) && /liquidity is not safety/.test(desc)
   && /never selects one\s+for a swap/.test(desc), desc);
+// Mutant: the description loses the omittedAddresses / omittedNotMeasured sentence
+check('the description says omitted addresses are named, apart from the ones not measured',
+  /omittedAddresses lists them/.test(desc) && /omittedNotMeasured those with no complete measure/.test(desc), desc);
 // mutant: the description loses "explicit opt-in" or "centralized indexes", or says "onchain" is not the default
 check('the description says on-chain is the default and the centralized indexes are an explicit opt-in',
   /"onchain" \(the default/.test(desc) && /explicit opt-in/.test(desc) && /centralized indexes/.test(desc), desc);
