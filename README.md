@@ -13,11 +13,11 @@ anyone.
   RPC call.
 - **Auth:** none · **API key:** none
 - **You bring:** an RPC node for each chain the local server reads ([variables](#local-server)). The remote endpoint needs nothing: you run the `eth_call` it prepares on your own node.
-- **Chains:** Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663) (protocol V1 is live on all five; V2 is pending and not planned for Ethereum L1)
+- **Chains:** Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663) (protocol V1 is live on all five; V2 is pending and targets Ethereum, Base, Optimism, Arbitrum, Robinhood Chain and Avalanche C-Chain)
 
 ## BlazePhoenix in one sentence
 
-BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine (proof-of-solvency: coming soon). V2, the generation now in development, targets Base, Optimism, Arbitrum, Robinhood Chain and further L2s and is not planned for Ethereum L1. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
+BlazePhoenix is the fully on-chain DEX aggregator — the route is computed inside the transaction that executes it — paired with an oracle-free staking engine (proof-of-solvency: coming soon). V2, the generation now in development, targets Ethereum, Base, Optimism, Arbitrum, Robinhood Chain and Avalanche C-Chain. The V1 generation deployed today runs on Base, Ethereum, Optimism, Arbitrum and Robinhood Chain.
 
 **Swap** in the [app](https://blazephoenix.xyz/?tab=swap) · **integrate** with the [SDK](https://github.com/blazephoenixxyz-crypto/SDK) (`npm i @blazephoenix/sdk`) · **connect an agent** to the [MCP server](https://github.com/blazephoenixxyz-crypto/blazephoenix-mcp) (`https://blazephoenix.xyz/mcp`, no key)
 
