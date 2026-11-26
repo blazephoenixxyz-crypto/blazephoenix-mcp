@@ -27,7 +27,7 @@ Local tools: `get_quote`, `build_swap` (unsigned Router calldata), `simulate_swa
 
 `get_quote` with `exact: true` returns `exactOut`, net of the protocol fee, and `quoterOut`, the scalar exactly as the Quoter returned it, with the Phoenix Check taken from the default quote of the same request. `BLAZEPHOENIX_VERSION` optionally pins the protocol version (`latest`, `1`, `2` or a full version such as `2.0.0`).
 
-Chains: Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663). Protocol V1 is live on all five; V2 (Router, Solver, Hub, Quoter and Gate with the Core and Math libraries) is pending and is not planned for Ethereum L1.
+Chains: Base (8453), Ethereum (1), Optimism (10), Arbitrum (42161), Robinhood Chain (4663). Protocol V1 is live on all five; V2 (Router, Solver, Hub, Quoter and Gate with the Core and Math libraries) is pending and targets Ethereum, Base, Optimism, Arbitrum, Robinhood Chain and Avalanche C-Chain.
 
 ## Docs
 
